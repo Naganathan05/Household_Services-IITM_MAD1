@@ -72,7 +72,7 @@ def getAdminDashboard():
             services = [{"id": row[0], "name": row[1], "base_price": row[2]} for row in cur.fetchall()]
 
             cur.execute("""
-                SELECT u.id, u.name, sr.experience, sr.serviceName
+                SELECT u.id, u.name, sr.experience, sr.serviceName, sr.status
                 FROM Users u
                 JOIN Professionals sr ON u.id = sr.userID
             """)
@@ -82,7 +82,8 @@ def getAdminDashboard():
                     "id": row[0],
                     "name": row[1],
                     "experience": row[2],
-                    "service_name": row[3]
+                    "service_name": row[3],
+                    "status": row[4]
                 }
                 for row in cur.fetchall()
             ]
@@ -254,6 +255,141 @@ def addService():
         print(jsonify({"error": str(e)}))
     return render_template("loginAdmin.html")
 
+@app.route('/searchAdmin', methods = ['GET'])
+def getSearchAdmin():
+    return render_template("adminSearch.html")
+
+@app.route('/searchServiceRequests', methods=['GET'])
+def search_service_requests():
+    try:
+        # Get the search word (professional_id) from query parameters
+        professional_id = request.args.get('q', type=int)
+
+        with sqlite3.connect(db_path) as con:
+            cur = con.cursor()
+
+            # Query to fetch records matching the searched professional_id
+            cur.execute("""
+                SELECT sr.id, u.id AS assigned_professional, sr.date_of_request, sr.service_status
+                FROM ServiceRequests sr
+                LEFT JOIN Professionals u ON sr.professional_id = u.id
+                WHERE sr.professional_id = ?
+            """, (professional_id,))
+            
+            # Fetch the matching records and format them
+            service_requests = [
+                {
+                    "id": row[0],
+                    "assigned_professional": row[1],
+                    "requested_date": row[2],
+                    "status": row[3]
+                }
+                for row in cur.fetchall()
+            ]
+        
+        return jsonify(service_requests), 200
+
+    except Exception as e:
+        print("Error fetching service requests:", e)
+        return {"message": "An error occurred while fetching service requests"}, 500
+
+@app.route('/searchProfessionals', methods=['GET'])
+def search_professionals():
+    try:
+        # Log the search request
+        print("Search Came !!")
+        
+        # Get the search word (professional name) from query parameters
+        search_word = request.args.get('q', type=str)
+
+        # Ensure search_word is not None
+        if not search_word:
+            return {"message": "Search word cannot be empty"}, 400
+
+        with sqlite3.connect(db_path) as con:
+            cur = con.cursor()
+
+            # Correct SQL query to fetch professionals by name
+            cur.execute("""
+                SELECT u.id AS userID, u.name AS name, p.serviceName AS service_name, p.status
+                FROM Professionals p
+                INNER JOIN Users u ON p.userID = u.id
+                WHERE u.name LIKE ?
+            """, (f"%{search_word}%",))  # Use LIKE for partial matching
+            
+            # Fetch the matching records and format them
+            professionals = [
+                {
+                    "userID": row[0],
+                    "name": row[1],
+                    "service_name": row[2],
+                    "status": row[3]
+                }
+                for row in cur.fetchall()
+            ]
+
+        # Return the results in JSON format
+        return jsonify(professionals), 200
+
+    except sqlite3.OperationalError as e:
+        print("SQL error:", e)
+        return {"message": f"SQL error: {e}"}, 500
+    except Exception as e:
+        print("Error fetching professionals:", e)
+        return {"message": "An error occurred while fetching professionals"}, 500
+
+@app.route('/searchCustomers', methods=['GET'])
+def search_customers():
+    try:
+        # Log the search request
+        print("Search Came for Customers !!")
+        
+        # Get the search word (customer name) from query parameters
+        search_word = request.args.get('q', type=str)
+
+        # Ensure search_word is not None
+        if search_word is None:
+            return {"message": "Search word cannot be None"}, 400
+
+        with sqlite3.connect(db_path) as con:
+            cur = con.cursor()
+
+            # Adjust the SQL query based on whether the search word is empty
+            if search_word.strip() == "":
+                # Fetch all records where role is Customer
+                cur.execute("""
+                    SELECT id AS userID, name, email, role
+                    FROM Users
+                    WHERE role = 'Customer'
+                """)
+            else:
+                # Fetch records matching the search word and role is Customer
+                cur.execute("""
+                    SELECT id AS userID, name, email
+                    FROM Users
+                    WHERE role = 'Customer' AND name LIKE ?
+                """, (f"%{search_word}%",))  # Use LIKE for partial matching
+            
+            # Fetch the matching records and format them
+            customers = [
+                {
+                    "name": row[1],
+                    "userID": row[0],
+                    "email": row[2]
+                }
+                for row in cur.fetchall()
+            ]
+
+        # Return the results in JSON format
+        return jsonify(customers), 200
+
+    except sqlite3.OperationalError as e:
+        print("SQL error:", e)
+        return {"message": f"SQL error: {e}"}, 500
+    except Exception as e:
+        print("Error fetching customers:", e)
+        return {"message": "An error occurred while fetching customers"}, 500
+
 
 def initialize_database():
     try:
@@ -294,6 +430,7 @@ def initialize_database():
                     userID INTEGER NOT NULL,
                     serviceName VARCHAR(255) NOT NULL,
                     experience INTEGER NOT NULL,
+                    status VARCHAR(255),
                     FOREIGN KEY (userID) REFERENCES Users (id),
                     FOREIGN KEY (serviceName) REFERENCES Services (name)
                 )
@@ -342,12 +479,16 @@ def initialize_database():
                 VALUES ("worker", "naganathan155@gmail.com", "Naganathan@15", "Professional")
             """)
             cur.execute("""
-                INSERT OR IGNORE INTO Professionals (userID, serviceName, experience)
-                VALUES (2, "worker", 5)
+                INSERT OR IGNORE INTO Professionals (userID, serviceName, experience, status)
+                VALUES (2, "ABC", 5, "Not Approved")
             """)
             cur.execute("""
                 INSERT OR IGNORE INTO ServiceRequests (service_id, customer_id, professional_id, date_of_request, service_status)
                 VALUES (1, 1, 1, CURRENT_DATE, "Requested")
+            """)
+            cur.execute("""
+                INSERT OR IGNORE INTO Users (name, email, password, role)
+                VALUES ("dummy", "naganathan55@gmail.com", "Naganathan@15", "Customer")
             """)
 
             print("Tables created and seeded successfully!")

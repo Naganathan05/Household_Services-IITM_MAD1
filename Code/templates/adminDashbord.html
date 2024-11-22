@@ -14,10 +14,10 @@
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav ms-auto">
                 <li class="nav-item">
-                    <a class="nav-link fs-5 fw-semibold text-white" href="/home">Home</a>
+                    <a class="nav-link fs-5 fw-semibold text-white" href="/admin">Home</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link fs-5 fw-semibold text-white" href="/search">Search</a>
+                    <a class="nav-link fs-5 fw-semibold text-white" href="/searchAdmin">Search</a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link fs-5 fw-semibold text-white" href="/summary">Summary</a>
@@ -79,6 +79,7 @@
                     <th>Name</th>
                     <th>Experience (Yrs)</th>
                     <th>Service Name</th>
+                    <th>Status</th>
                     <th>Action</th>
                 </tr>
             </thead>
@@ -89,6 +90,7 @@
                     <td>{{ professional.name }}</td>
                     <td>{{ professional.experience }}</td>
                     <td>{{ professional.service_name }}</td>
+                    <td>{{ professional.status }}</td>
                     <td>
                         <form method="POST" action="/approve" class="d-inline-block me-2">
                             <input type="hidden" name="id" value="{{ professional.id }}">
