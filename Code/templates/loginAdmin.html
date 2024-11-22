@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Admin Login{% endblock %}
+{% block cssfile %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/css/bootstrap.min.css" integrity="sha384-F3w7mX95PdgyTmZZMECAngseQB83DfGTowi0iMjiWaeVhAn4FJkqJByhZMI3AhiU" crossorigin="anonymous">
+{% endblock %}
+{% block body %}
+<div class="container mt-5">
+  <div class="card mx-auto" style="max-width: 400px;">
+    <div class="card-body">
+      <h3 class="card-title text-center mb-4">Admin Login</h3>
+      <form action="/loginUser" id="adminForm" method="post">
+        <div class="mb-3">
+          <label for="emailID" class="form-label">Email</label>
+          <input type="email" class="form-control" id="emailID" name="emailID" required>
+        </div>
+        <div class="mb-3">
+          <label for="password" class="form-label">Password</label>
+          <input type="password" class="form-control" id="password" name="password" required>
+          <div id="passwordHelpBlock" class="form-text">
+            Password must be at least 8 characters long and include both letters and numbers.
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary w-100" id="submitButton" disabled>Login</button>
+      </form>
+      <p class="text-center mt-3">
+        <a href="/forgotPassword" class="link-primary">Forgot password?</a>
+      </p>
+    </div>
+  </div>
+</div>
+
+<script>
+  const passwordField = document.getElementById("password");
+  const submitButton = document.getElementById("submitButton");
+
+  const passwordRegex = /^.{8,}$/;
+
+  function validatePassword() {
+    if (passwordRegex.test(passwordField.value)) {
+      submitButton.disabled = false;
+    } else {
+      submitButton.disabled = true;
+    }
+  }
+
+  passwordField.addEventListener("input", validatePassword);
+</script>
+{% endblock %}

@@ -1,49 +1,51 @@
 import sqlite3
 import os
-from flask import *
+from flask import Flask, request, jsonify, redirect, session, render_template
 
 app = Flask(__name__)
 
-# Secret key for session management
 app.secret_key = os.getenv('SECRET_KEY', 'default-secret-key')
-db_path = 'C:/Users/Dell/householdDB' 
+db_path = 'C:/Users/Dell/householdDB'
 
-# Flask app routes and main logic
 @app.route("/")
 def home():
     return "Welcome to the Household Services App!"
 
+@app.route("/adminLogin", methods=['GET'])
+def loginAdmin():
+    return render_template("loginAdmin.html")
+
 @app.route("/loginUser", methods=['POST'])
 def loginUser():
-    data = request.get_json()
-    username = data.get("userName")
-    password = data.get("password")
+    print("Request Received")
+    email = request.form.get("emailID")
+    password = request.form.get("password")
 
-    if not username or not password:
+    if not email or not password:
         return jsonify({"BAD_REQUEST": "Invalid credentials!"})
 
-    print(f"Login attempt with username: {username}, password: {password}")
+    print(f"Login attempt with username: {email}, password: {password}")
 
     try:
         with sqlite3.connect(db_path) as con:
             cur = con.cursor()
 
-            cur.execute("SELECT * FROM Users WHERE username = ?", (username,))
+            cur.execute("SELECT * FROM Users WHERE email = ?", (email,))
             user = cur.fetchone()
+            print("User Details")
+            print(user)
 
             if user:
-                # Check if the password matches the hashed password
-                if check_password_hash(user[2], password):  # Assuming the password is stored in the 2nd index
-                    role = user[4]  # The role is at index 4 in the 'Users' table
+                if user[3] == password:
+                    role = user[4]
 
                     print("User found successfully!")
-                    session['user'] = username
+                    session['user'] = email
                     session['role'] = role
 
-                    # Redirect based on user role (1 for Admin, 0 for regular user)
-                    if role == 'Admin':  # Assuming 'Admin' is stored as role value
+                    if role == 'Admin':
                         return redirect("/adminHome")
-                    elif role == 'Customer':  # Assuming 'Customer' is stored as role value
+                    elif role == 'Customer':
                         return redirect("/userHome")
                     else:
                         return redirect("/login")
@@ -60,15 +62,16 @@ def loginUser():
 
     return redirect("/login")
 
-
-# Database initialization
 def initialize_database():
     try:
-        # Establish a connection to SQLite database
-        with sqlite3.connect("C:/Users/Dell/householdDB") as con:
+        with sqlite3.connect(db_path) as con:
             cur = con.cursor()
-            
-            # Create Users table
+
+            cur.execute("DROP TABLE IF EXISTS Users")
+            cur.execute("DROP TABLE IF EXISTS Services")
+            cur.execute("DROP TABLE IF EXISTS ServiceRequests")
+            cur.execute("DROP TABLE IF EXISTS Reviews")
+
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS Users (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -80,7 +83,6 @@ def initialize_database():
                 )
             """)
 
-            # Create Services table
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS Services (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -92,7 +94,6 @@ def initialize_database():
                 )
             """)
 
-            # Create ServiceRequests table
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS ServiceRequests (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -109,7 +110,6 @@ def initialize_database():
                 )
             """)
 
-            # Create Reviews table
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS Reviews (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -123,11 +123,16 @@ def initialize_database():
                 )
             """)
 
-            print("Tables created successfully!")
+            cur.execute("""
+                INSERT OR IGNORE INTO Users (name, email, password, role)
+                VALUES ("Naganathan", "naganathan1555@gmail.com", "Naganathan@15", "Admin")
+            """)
+
+            print("Tables created and seeded successfully!")
+
     except Exception as e:
         print("Error in table creation or connecting to server:", e)
 
-
 if __name__ == '__main__':
     initialize_database()
-    app.run(debug = True, port=8080)
+    app.run(debug=True, port=8080)
