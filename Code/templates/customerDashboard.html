@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}Customer Home{% endblock %}
+
+{% block cssfile %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/css/bootstrap.min.css">
+{% endblock %}
+
+{% block body %}
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <div class="container-fluid">
+        <a class="navbar-brand fs-3 fw-bold text-white" href="#">Admin Dashboard</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item">
+                    <a class="nav-link fs-5 fw-semibold text-white" href="/admin">Home</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link fs-5 fw-semibold text-white" href="/searchAdmin">Search</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link fs-5 fw-semibold text-white" href="/summary">Summary</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link fs-5 fw-semibold text-white" href="/logout">Logout</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<div class="container my-5">
+    <div class="text-center">
+        <h2>Looking For?</h2>
+        <div class="row mt-4">
+            {% for service in services %}
+            <div class="col-md-3 mb-3">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title text-center">{{ service[1] }}</h5>
+                        <a href="/select_service/{{ service[0] }}" class="btn btn-primary w-100">Select</a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <hr class="my-5">
+
+    <h3>Service History</h3>
+    <table class="table table-striped table-bordered">
+        <thead class="table-primary">
+            <tr>
+                <th>ID</th>
+                <th>Service Name</th>
+                <th>Professional Name</th>
+                <th>Phone No.</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for request in service_history %}
+            <tr>
+                <td>{{ request[0] }}</td>
+                <td>{{ request[1] }}</td>
+                <td>{{ request[2] if request[2] else "N/A" }}</td>
+                <td>{{ request[3] if request[3] else "N/A" }}</td>
+                <td>
+                    {% if request[4] == "Requested" %}
+                    <a href="/close_request/{{ request[0] }}" class="btn btn-success btn-sm">Close?</a>
+                    {% else %}
+                    {{ request[4] }}
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

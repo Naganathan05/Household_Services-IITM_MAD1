@@ -40,13 +40,13 @@ def loginUser():
                     role = user[4]
 
                     print("User found successfully!")
-                    session['user'] = email
+                    session['id'] = user[0]
                     session['role'] = role
 
                     if role == 'Admin':
                         return redirect("/admin")
                     elif role == 'Customer':
-                        return redirect("/user")
+                        return redirect("/customer")
                     else:
                         return redirect("/login")
 
@@ -262,6 +262,41 @@ def getSearchAdmin():
 def getRegisterCustomer():
     return render_template("registerCustomer.html")
 
+@app.route('/customer', methods=['GET'])
+def customerDashboard():
+    if 'id' not in session or 'role' not in session or session['role'] != 'Customer':
+        return redirect('adminLogin')
+
+    customer_id = session['id']
+
+    with sqlite3.connect(db_path) as con:
+        cur = con.cursor()
+        cur.execute("SELECT id, name FROM Services")
+        services = cur.fetchall()  # List of tuples [(id, name), ...]
+
+    # Fetch all service requests for the logged-in customer
+    with sqlite3.connect(db_path) as con:
+        cur = con.cursor()
+        cur.execute("""
+            SELECT sr.id, 
+                s.name AS service_name, 
+                u.name AS professional_name, 
+                p.phoneNumber AS professional_phone, 
+                sr.service_status
+            FROM ServiceRequests sr
+            JOIN Services s ON sr.service_id = s.id
+            LEFT JOIN Professionals p ON sr.professional_id = p.userID
+            LEFT JOIN Users u ON p.userID = u.id
+            WHERE sr.customer_id = ?
+        """, (customer_id,))
+        service_requests = cur.fetchall() 
+
+    return render_template(
+        'customerDashboard.html',
+        services=services,
+        service_requests=service_requests
+    )
+
 @app.route('/searchServiceRequests', methods=['GET'])
 def search_service_requests():
     try:
@@ -467,6 +502,7 @@ def initialize_database():
                     userID INTEGER NOT NULL,
                     serviceName VARCHAR(255) NOT NULL,
                     experience INTEGER NOT NULL,
+                    phoneNumber INTEGER NOT NULL,
                     status VARCHAR(255),
                     FOREIGN KEY (userID) REFERENCES Users (id),
                     FOREIGN KEY (serviceName) REFERENCES Services (name)
@@ -526,8 +562,8 @@ def initialize_database():
                 VALUES ("worker", "naganathan155@gmail.com", "Naganathan@15", "Professional")
             """)
             cur.execute("""
-                INSERT OR IGNORE INTO Professionals (userID, serviceName, experience, status)
-                VALUES (2, "ABC", 5, "Not Approved")
+                INSERT OR IGNORE INTO Professionals (userID, serviceName, experience, phoneNumber, status)
+                VALUES (2, "ABC", 5, 9080800380, "Not Approved")
             """)
             cur.execute("""
                 INSERT OR IGNORE INTO ServiceRequests (service_id, customer_id, professional_id, date_of_request, service_status)
