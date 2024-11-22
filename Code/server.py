@@ -62,6 +62,61 @@ def loginUser():
 
     return redirect("/login")
 
+@app.route('/admin', methods=['GET'])
+def getAdminDashboard():
+    try:
+        with sqlite3.connect(db_path) as con:
+            cur = con.cursor()
+            
+            cur.execute("SELECT id, name, price AS base_price FROM Services")
+            services = [{"id": row[0], "name": row[1], "base_price": row[2]} for row in cur.fetchall()]
+
+            cur.execute("""
+                SELECT u.id, u.name, u.role, s.name AS service_name
+                FROM Users u
+                JOIN ServiceRequests sr ON u.id = sr.professional_id
+                JOIN Services s ON sr.service_id = s.id
+                WHERE u.role = 'Professional'
+            """)
+
+            professionals = [
+                {
+                    "id": row[0],
+                    "name": row[1],
+                    "experience": row[2],
+                    "service_name": row[3]
+                }
+                for row in cur.fetchall()
+            ]
+            
+            # Fetch and structure service requests data
+            cur.execute("""
+                SELECT sr.id, u.name AS assigned_professional, sr.date_of_request, sr.service_status
+                FROM ServiceRequests sr
+                LEFT JOIN Users u ON sr.professional_id = u.id
+            """)
+            service_requests = [
+                {
+                    "id": row[0],
+                    "assigned_professional": row[1],
+                    "requested_date": row[2],
+                    "status": row[3]
+                }
+                for row in cur.fetchall()
+            ]
+        
+        # Render the template with the structured data
+        return render_template(
+            'adminDashbord.html',
+            services=services,
+            professionals=professionals,
+            service_requests=service_requests
+        )
+    
+    except Exception as e:
+        print("Error fetching data from database:", e)
+        return "Error loading admin dashboard", 500
+
 @app.route('/newService', methods = ['GET'])
 def newService():
     return render_template("newService.html")

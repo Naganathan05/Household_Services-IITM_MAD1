@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}Admin Login{% endblock %}
+{% block cssfile %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/css/bootstrap.min.css" integrity="sha384-F3w7mX95PdgyTmZZMECAngseQB83DfGTowi0iMjiWaeVhAn4FJkqJByhZMI3AhiU" crossorigin="anonymous">
+<link rel="stylesheet" href="{{ url_for('static', filename='adminDashboard.css') }}">
+{% endblock %}
+{% block body %}
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <div class="container-fluid">
+        <a class="navbar-brand fs-3 fw-bold text-white" href="#">Admin Dashboard</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item">
+                    <a class="nav-link fs-5 fw-semibold text-white" href="/home">Home</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link fs-5 fw-semibold text-white" href="/search">Search</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link fs-5 fw-semibold text-white" href="/summary">Summary</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link fs-5 fw-semibold text-white" href="/logout">Logout</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<!-- Main Content -->
+<div class="container my-5 dashboard-content">
+    <h2 class="mb-4">Dashboard</h2>
+
+    <!-- Services Table -->
+    <div class="table-responsive mb-5">
+        <h4>Services</h4>
+        <table class="table table-striped table-bordered">
+            <thead class="table-primary">
+                <tr>
+                    <th>ID</th>
+                    <th>Service Name</th>
+                    <th>Base Price</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for service in services %}
+                <tr>
+                    <td>{{ service.id }}</td>
+                    <td>{{ service.name }}</td>
+                    <td>{{ service.base_price }}</td>
+                    <td>
+                        <a href="/edit/{{ service.id }}" class="btn btn-warning btn-sm">Edit</a>
+                        <a href="/delete/{{ service.id }}" class="btn btn-danger btn-sm">Delete</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <a href="/newService" class="btn btn-success">+ New Service</a>
+    </div>
+
+    <!-- Professionals Table -->
+    <div class="table-responsive mb-5">
+        <h4>Professionals</h4>
+        <table class="table table-striped table-bordered">
+            <thead class="table-primary">
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Experience (Yrs)</th>
+                    <th>Service Name</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for professional in professionals %}
+                <tr>
+                    <td>{{ professional.id }}</td>
+                    <td>{{ professional.name }}</td>
+                    <td>{{ professional.experience }}</td>
+                    <td>{{ professional.service_name }}</td>
+                    <td>
+                        <a href="/approve/{{ professional.id }}" class="btn btn-success btn-sm">Approve</a>
+                        <a href="/reject/{{ professional.id }}" class="btn btn-warning btn-sm">Reject</a>
+                        <a href="/delete/{{ professional.id }}" class="btn btn-danger btn-sm">Delete</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Service Requests Table -->
+    <div class="table-responsive mb-5">
+        <h4>Service Requests</h4>
+        <table class="table table-striped table-bordered">
+            <thead class="table-primary">
+                <tr>
+                    <th>ID</th>
+                    <th>Assigned Professional</th>
+                    <th>Requested Date</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for request in service_requests %}
+                <tr>
+                    <td>{{ request.id }}</td>
+                    <td>{{ request.assigned_professional }}</td>
+                    <td>{{ request.requested_date }}</td>
+                    <td>{{ request.status }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
