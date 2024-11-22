@@ -62,6 +62,50 @@ def loginUser():
 
     return redirect("/login")
 
+@app.route('/newService', methods = ['GET'])
+def newService():
+    return render_template("newService.html")
+
+@app.route('/newService', methods=['POST'])
+def addService():
+    try:
+        print("Received a POST Request")
+        # data = request.get_json()
+        service_name = request.form.get('serviceName')
+        description = request.form.get('description')
+        base_price = request.form.get('basePrice')
+        timeRequired = request.form.get('timeRequired')
+        # service_name = data.get('serviceName')
+        # description = data.get('description')
+        # base_price = data.get('basePrice')
+        # timeRequired = data.get('timeRequired')
+
+        if not service_name or not base_price:
+            print("Error 1")
+            return jsonify({"error": "Service name and base price are required!"}), 400
+
+        try:
+            base_price = float(base_price)
+        except ValueError:
+            return jsonify({"error": "Base price must be a valid number!"}), 400
+
+        with sqlite3.connect(db_path) as con:
+            cur = con.cursor()
+            cur.execute("""
+                INSERT INTO Services (name, price, description, time_required)
+                VALUES (?, ?, ?, ?)
+            """, (service_name, base_price, description, timeRequired))
+            con.commit()
+
+        return jsonify({"message": "Service added successfully!"}), 201
+
+    except Exception as e:
+        print("Error 2")
+        print(e)
+        print(jsonify({"error": str(e)}))
+    return render_template("loginAdmin.html")
+
+
 def initialize_database():
     try:
         with sqlite3.connect(db_path) as con:
