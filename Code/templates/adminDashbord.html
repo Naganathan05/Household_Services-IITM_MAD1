@@ -53,8 +53,14 @@
                     <td>{{ service.name }}</td>
                     <td>{{ service.base_price }}</td>
                     <td>
-                        <a href="/edit/{{ service.id }}" class="btn btn-warning btn-sm">Edit</a>
-                        <a href="/delete/{{ service.id }}" class="btn btn-danger btn-sm">Delete</a>
+                        <form method="POST" action="/editService/{{ service.id }}" class="d-inline-block me-2">
+                            <input type="hidden" name="id" value="{{ service.id }}">
+                            <button type="submit" class="btn btn-warning btn-sm">Edit</button>
+                        </form>
+                        <form method="POST" action="/deleteService/{{ service.id }}" class="d-inline-block">
+                            <input type="hidden" name="id" value="{{ service.id }}">
+                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                        </form>
                     </td>
                 </tr>
                 {% endfor %}
@@ -84,9 +90,18 @@
                     <td>{{ professional.experience }}</td>
                     <td>{{ professional.service_name }}</td>
                     <td>
-                        <a href="/approve/{{ professional.id }}" class="btn btn-success btn-sm">Approve</a>
-                        <a href="/reject/{{ professional.id }}" class="btn btn-warning btn-sm">Reject</a>
-                        <a href="/delete/{{ professional.id }}" class="btn btn-danger btn-sm">Delete</a>
+                        <form method="POST" action="/approve" class="d-inline-block me-2">
+                            <input type="hidden" name="id" value="{{ professional.id }}">
+                            <button type="submit" class="btn btn-success btn-sm">Approve</button>
+                        </form>
+                        <form method="POST" action="/reject" class="d-inline-block me-2">
+                            <input type="hidden" name="id" value="{{ professional.id }}">
+                            <button type="submit" class="btn btn-warning btn-sm">Reject</button>
+                        </form>
+                        <form method="POST" action="/delete" class="d-inline-block">
+                            <input type="hidden" name="id" value="{{ professional.id }}">
+                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                        </form>
                     </td>
                 </tr>
                 {% endfor %}

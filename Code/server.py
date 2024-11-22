@@ -72,11 +72,9 @@ def getAdminDashboard():
             services = [{"id": row[0], "name": row[1], "base_price": row[2]} for row in cur.fetchall()]
 
             cur.execute("""
-                SELECT u.id, u.name, u.role, s.name AS service_name
+                SELECT u.id, u.name, sr.experience, sr.serviceName
                 FROM Users u
-                JOIN ServiceRequests sr ON u.id = sr.professional_id
-                JOIN Services s ON sr.service_id = s.id
-                WHERE u.role = 'Professional'
+                JOIN Professionals sr ON u.id = sr.userID
             """)
 
             professionals = [
@@ -91,9 +89,9 @@ def getAdminDashboard():
             
             # Fetch and structure service requests data
             cur.execute("""
-                SELECT sr.id, u.name AS assigned_professional, sr.date_of_request, sr.service_status
+                SELECT sr.id, u.id AS assigned_professional, sr.date_of_request, sr.service_status
                 FROM ServiceRequests sr
-                LEFT JOIN Users u ON sr.professional_id = u.id
+                LEFT JOIN Professionals u ON sr.professional_id = u.id
             """)
             service_requests = [
                 {
@@ -116,6 +114,38 @@ def getAdminDashboard():
     except Exception as e:
         print("Error fetching data from database:", e)
         return "Error loading admin dashboard", 500
+    
+@app.route('/deleteService/<int:serviceID>', methods=['POST'])
+def deleteService(serviceID):
+    try:
+        with sqlite3.connect(db_path) as con:
+            cur = con.cursor()
+
+            # Step 1: Get the service name for the given service ID
+            cur.execute("SELECT name FROM Services WHERE id = ?", (serviceID,))
+            service = cur.fetchone()
+
+            if not service:
+                return {"message": "Service not found"}, 404
+
+            service_name = service[0]
+
+            # Step 2: Delete related service requests
+            cur.execute("DELETE FROM ServiceRequests WHERE service_id = ?", (serviceID,))
+
+            # Step 3: Remove professionals offering this service
+            cur.execute("DELETE FROM Professionals WHERE serviceName = ?", (service_name,))
+
+            # Step 4: Delete the service itself
+            cur.execute("DELETE FROM Services WHERE id = ?", (serviceID,))
+
+            con.commit()
+            return {"message": "Service and related data successfully deleted"}, 200
+
+    except Exception as e:
+        print("Error deleting service:", e)
+        return {"message": "An error occurred while deleting the service"}, 500
+
 
 @app.route('/newService', methods = ['GET'])
 def newService():
@@ -170,6 +200,7 @@ def initialize_database():
             cur.execute("DROP TABLE IF EXISTS Services")
             cur.execute("DROP TABLE IF EXISTS ServiceRequests")
             cur.execute("DROP TABLE IF EXISTS Reviews")
+            cur.execute("DROP TABLE IF EXISTS Professionals")
 
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS Users (
@@ -194,6 +225,18 @@ def initialize_database():
             """)
 
             cur.execute("""
+                CREATE TABLE IF NOT EXISTS Professionals (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    userID INTEGER NOT NULL,
+                    serviceName VARCHAR(255) NOT NULL,
+                    experience INTEGER NOT NULL,
+                    FOREIGN KEY (userID) REFERENCES Users (id),
+                    FOREIGN KEY (serviceName) REFERENCES Services (name)
+                )
+                         
+            """)
+
+            cur.execute("""
                 CREATE TABLE IF NOT EXISTS ServiceRequests (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     service_id INTEGER NOT NULL,
@@ -205,7 +248,7 @@ def initialize_database():
                     remarks TEXT,
                     FOREIGN KEY (service_id) REFERENCES Services (id),
                     FOREIGN KEY (customer_id) REFERENCES Users (id),
-                    FOREIGN KEY (professional_id) REFERENCES Users (id)
+                    FOREIGN KEY (professional_id) REFERENCES Professionals (id)
                 )
             """)
 
@@ -225,6 +268,22 @@ def initialize_database():
             cur.execute("""
                 INSERT OR IGNORE INTO Users (name, email, password, role)
                 VALUES ("Naganathan", "naganathan1555@gmail.com", "Naganathan@15", "Admin")
+            """)
+            cur.execute("""
+                INSERT OR IGNORE INTO Services (name, price, time_required, description)
+                VALUES ("ABC", 5000, 2, "This is a New Service")
+            """)
+            cur.execute("""
+                INSERT INTO Users (name, email, password, role)
+                VALUES ("worker", "naganathan155@gmail.com", "Naganathan@15", "Professional")
+            """)
+            cur.execute("""
+                INSERT OR IGNORE INTO Professionals (userID, serviceName, experience)
+                VALUES (2, "worker", 5)
+            """)
+            cur.execute("""
+                INSERT OR IGNORE INTO ServiceRequests (service_id, customer_id, professional_id, date_of_request, service_status)
+                VALUES (1, 1, 1, CURRENT_DATE, "Requested")
             """)
 
             print("Tables created and seeded successfully!")
