@@ -13,7 +13,7 @@ def home():
 
 @app.route("/adminLogin", methods=['GET'])
 def loginAdmin():
-    return render_template("loginAdmin.html")
+    return render_template("login.html")
 
 @app.route("/loginUser", methods=['POST'])
 def loginUser():
@@ -44,9 +44,9 @@ def loginUser():
                     session['role'] = role
 
                     if role == 'Admin':
-                        return redirect("/adminHome")
+                        return redirect("/admin")
                     elif role == 'Customer':
-                        return redirect("/userHome")
+                        return redirect("/user")
                     else:
                         return redirect("/login")
 
@@ -141,7 +141,7 @@ def deleteService(serviceID):
             cur.execute("DELETE FROM Services WHERE id = ?", (serviceID,))
 
             con.commit()
-            return {"message": "Service and related data successfully deleted"}, 200
+            return redirect('/admin')
 
     except Exception as e:
         print("Error deleting service:", e)
@@ -247,17 +247,20 @@ def addService():
             """, (service_name, base_price, description, timeRequired))
             con.commit()
 
-        return jsonify({"message": "Service added successfully!"}), 201
+        return redirect('/admin')
 
     except Exception as e:
         print("Error 2")
         print(e)
         print(jsonify({"error": str(e)}))
-    return render_template("loginAdmin.html")
 
 @app.route('/searchAdmin', methods = ['GET'])
 def getSearchAdmin():
     return render_template("adminSearch.html")
+
+@app.route('/registerCustomer', methods = ['GET'])
+def getRegisterCustomer():
+    return render_template("registerCustomer.html")
 
 @app.route('/searchServiceRequests', methods=['GET'])
 def search_service_requests():
@@ -390,6 +393,39 @@ def search_customers():
         print("Error fetching customers:", e)
         return {"message": "An error occurred while fetching customers"}, 500
 
+@app.route('/registerCustomer', methods=['POST'])
+def register_customer():
+    try:
+        # Get data from the form submission
+        email = request.form['email']
+        password = request.form['password']
+        fullname = request.form['fullname']
+        address = request.form['address']
+        pin_code = request.form['pin_code']
+
+        # Connect to the database
+        with sqlite3.connect(db_path) as con:
+            cur = con.cursor()
+
+            cur.execute("""
+                INSERT INTO Users (email, password, name, role)
+                VALUES (?, ?, ?, ?)
+            """, (email, password, fullname, 'Customer'))
+
+
+            user_id = cur.lastrowid
+            cur.execute("""
+                INSERT INTO Customers (userID, address, PinCode)
+                VALUES (?, ?, ?)
+            """, (user_id, address, pin_code))
+
+            con.commit()
+
+        return redirect('/adminLogin')
+
+    except Exception as e:
+        return {"message": f"An error occurred: {str(e)}"}, 500
+
 
 def initialize_database():
     try:
@@ -401,6 +437,7 @@ def initialize_database():
             cur.execute("DROP TABLE IF EXISTS ServiceRequests")
             cur.execute("DROP TABLE IF EXISTS Reviews")
             cur.execute("DROP TABLE IF EXISTS Professionals")
+            cur.execute("DROP TABLE IF EXISTS Customers")
 
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS Users (
@@ -435,6 +472,16 @@ def initialize_database():
                     FOREIGN KEY (serviceName) REFERENCES Services (name)
                 )
                          
+            """)
+
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS Customers (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    userID INTEGER NOT NULL,
+                    address VARCHAR(255) NOT NULL,
+                    PinCode INTEGER NOT NULL
+                )
+                        
             """)
 
             cur.execute("""
@@ -489,6 +536,10 @@ def initialize_database():
             cur.execute("""
                 INSERT OR IGNORE INTO Users (name, email, password, role)
                 VALUES ("dummy", "naganathan55@gmail.com", "Naganathan@15", "Customer")
+            """)
+            cur.execute("""
+                INSERT OR IGNORE INTO Customers (userID, address, PinCode)
+                VALUES (2, "YMR Patti", 624001)
             """)
 
             print("Tables created and seeded successfully!")
