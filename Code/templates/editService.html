@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Edit Service{% endblock %}
+{% block cssfile %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/css/bootstrap.min.css" integrity="sha384-F3w7mX95PdgyTmZZMECAngseQB83DfGTowi0iMjiWaeVhAn4FJkqJByhZMI3AhiU" crossorigin="anonymous">
+{% endblock %}
+{% block body %}
+<div class="container mt-5">
+    <div class="card shadow">
+        <div class="card-header text-center bg-primary text-white">
+            <h3>Edit Service</h3>
+        </div>
+        <div class="card-body">
+            <!-- Form to edit service -->
+            <form id="editServiceForm">
+                <div class="mb-3">
+                    <label for="serviceName" class="form-label">Service Name</label>
+                    <input 
+                        type="text" 
+                        class="form-control" 
+                        id="serviceName" 
+                        name="serviceName" 
+                        value="{{ serviceName }}" 
+                        required>
+                </div>
+                <div class="mb-3">
+                    <label for="description" class="form-label">Description</label>
+                    <textarea 
+                        class="form-control" 
+                        id="description" 
+                        name="description" 
+                        rows="3" 
+                        required>{{ description }}</textarea>
+                </div>
+                <div class="mb-3">
+                    <label for="basePrice" class="form-label">Base Price</label>
+                    <input 
+                        type="number" 
+                        class="form-control" 
+                        id="basePrice" 
+                        name="basePrice" 
+                        value="{{ basePrice }}" 
+                        required>
+                </div>
+                <div class="mb-3">
+                    <label for="timeRequired" class="form-label">Time Required (in minutes)</label>
+                    <input 
+                        type="number" 
+                        class="form-control" 
+                        id="timeRequired" 
+                        name="timeRequired" 
+                        value="{{ timeRequired }}" 
+                        required>
+                </div>
+                <div class="text-center">
+                    <button type="button" class="btn btn-primary py-3 px-4 btn-hover" id="saveButton">Save</button>
+                    <a href="/admin" class="btn btn-danger py-3 px-4 btn-hover">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // JavaScript to handle PUT request on Save button click
+    document.getElementById('saveButton').addEventListener('click', function () {
+        const form = document.getElementById('editServiceForm');
+        const formData = new FormData(form);
+
+        // Convert FormData to JSON
+        const data = {};
+        formData.forEach((value, key) => {
+            data[key] = value;
+        });
+
+        // Make a PUT request to /editService/:serviceID
+        fetch(`/editService/{{ serviceID }}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        })
+        .then((response) => response.json())
+        .then((data) => {
+            if (data.message) {
+                alert(data.message);
+                window.location.href = '/admin'; // Redirect to admin page after successful edit
+            }
+        })
+        .catch((error) => {
+            console.error('Error:', error);
+            alert('An error occurred while updating the service.');
+        });
+    });
+</script>
+{% endblock %}

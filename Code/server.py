@@ -145,6 +145,70 @@ def deleteService(serviceID):
     except Exception as e:
         print("Error deleting service:", e)
         return {"message": "An error occurred while deleting the service"}, 500
+    
+@app.route('/editService/<int:serviceID>', methods=['GET'])
+def getEditService(serviceID):
+    try:
+        with sqlite3.connect(db_path) as con:
+            cur = con.cursor()
+
+            # Fetch service details for the given service ID
+            cur.execute("SELECT name, description, price, time_required FROM Services WHERE id = ?", (serviceID,))
+            service = cur.fetchone()
+
+            if not service:
+                return {"message": "Service not found"}, 404
+            
+            serviceName, description, basePrice, timeRequired = service
+            return render_template(
+                "editService.html",
+                serviceID=serviceID,
+                serviceName=serviceName,
+                description=description,
+                basePrice=basePrice,
+                timeRequired=timeRequired
+            )
+        
+    except Exception as e:
+        print("Error fetching service details:", e)
+        return {"message": "An error occurred while fetching the service details"}, 500
+    
+@app.route('/editService/<int:serviceID>', methods=['PUT'])
+def editService(serviceID):
+    try:
+        # Parse the JSON data sent from the frontend
+        data = request.json
+        serviceName = data.get('serviceName')
+        description = data.get('description')
+        basePrice = data.get('basePrice')
+        timeRequired = data.get('timeRequired')
+
+        # Validate the required fields
+        if not (serviceName and description and basePrice and timeRequired):
+            return {"message": "All fields are required"}, 400
+
+        with sqlite3.connect(db_path) as con:
+            cur = con.cursor()
+
+            # Check if the service exists
+            cur.execute("SELECT id FROM Services WHERE id = ?", (serviceID,))
+            if not cur.fetchone():
+                return {"message": "Service not found"}, 404
+
+            # Update the service details in the database
+            cur.execute("""
+                UPDATE Services
+                SET name = ?, description = ?, price = ?, time_required = ?
+                WHERE id = ?
+            """, (serviceName, description, basePrice, timeRequired, serviceID))
+            con.commit()
+
+        return {"message": "Service updated successfully"}, 200
+
+    except Exception as e:
+        print("Error updating service details:", e)
+        return {"message": "An error occurred while updating the service details"}, 500
+
 
 
 @app.route('/newService', methods = ['GET'])

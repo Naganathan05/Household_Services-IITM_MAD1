@@ -53,7 +53,7 @@
                     <td>{{ service.name }}</td>
                     <td>{{ service.base_price }}</td>
                     <td>
-                        <form method="POST" action="/editService/{{ service.id }}" class="d-inline-block me-2">
+                        <form method="GET" action="/editService/{{ service.id }}" class="d-inline-block me-2">
                             <input type="hidden" name="id" value="{{ service.id }}">
                             <button type="submit" class="btn btn-warning btn-sm">Edit</button>
                         </form>
