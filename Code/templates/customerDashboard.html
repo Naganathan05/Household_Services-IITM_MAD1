@@ -9,20 +9,17 @@
 {% block body %}
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
     <div class="container-fluid">
-        <a class="navbar-brand fs-3 fw-bold text-white" href="#">Admin Dashboard</a>
+        <a class="navbar-brand fs-3 fw-bold text-white" href="#">Customer Dashboard</a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav ms-auto">
                 <li class="nav-item">
-                    <a class="nav-link fs-5 fw-semibold text-white" href="/admin">Home</a>
+                    <a class="nav-link fs-5 fw-semibold text-white" href="/customer">Home</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link fs-5 fw-semibold text-white" href="/searchAdmin">Search</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link fs-5 fw-semibold text-white" href="/summary">Summary</a>
+                    <a class="nav-link fs-5 fw-semibold text-white" href="/profile">Profile</a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link fs-5 fw-semibold text-white" href="/logout">Logout</a>
@@ -33,6 +30,7 @@
 </nav>
 
 <div class="container my-5">
+    <!-- Section: Available Services -->
     <div class="text-center">
         <h2>Looking For?</h2>
         <div class="row mt-4">
@@ -51,6 +49,7 @@
 
     <hr class="my-5">
 
+    <!-- Section: Service History -->
     <h3>Service History</h3>
     <table class="table table-striped table-bordered">
         <thead class="table-primary">
@@ -63,7 +62,7 @@
             </tr>
         </thead>
         <tbody>
-            {% for request in service_history %}
+            {% for request in service_requests %}
             <tr>
                 <td>{{ request[0] }}</td>
                 <td>{{ request[1] }}</td>

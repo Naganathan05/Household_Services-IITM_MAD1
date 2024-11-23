@@ -264,17 +264,31 @@ def getRegisterCustomer():
 
 @app.route('/customer', methods=['GET'])
 def customerDashboard():
-    if 'id' not in session or 'role' not in session or session['role'] != 'Customer':
+    print("Reached Here..")
+
+    user_id = session['id']
+    print("Received Session User ID: ", user_id)
+
+    # Fetch customer_id using userID from Customers table
+    with sqlite3.connect(db_path) as con:
+        cur = con.cursor()
+        cur.execute("SELECT id FROM Customers WHERE userID = ?", (user_id,))
+        result = cur.fetchone()
+
+    if not result:
+        # If no customer entry exists for the userID, redirect to login or error page
         return redirect('adminLogin')
 
-    customer_id = session['id']
+    customer_id = result[0]  # Extract customer_id from the query result
+    print("Mapped Customer ID: ", customer_id)
 
+    # Fetch available services
     with sqlite3.connect(db_path) as con:
         cur = con.cursor()
         cur.execute("SELECT id, name FROM Services")
         services = cur.fetchall()  # List of tuples [(id, name), ...]
 
-    # Fetch all service requests for the logged-in customer
+    # Fetch all service requests for the mapped customer_id
     with sqlite3.connect(db_path) as con:
         cur = con.cursor()
         cur.execute("""
@@ -285,12 +299,15 @@ def customerDashboard():
                 sr.service_status
             FROM ServiceRequests sr
             JOIN Services s ON sr.service_id = s.id
-            LEFT JOIN Professionals p ON sr.professional_id = p.userID
+            LEFT JOIN Professionals p ON sr.professional_id = p.id
             LEFT JOIN Users u ON p.userID = u.id
             WHERE sr.customer_id = ?
         """, (customer_id,))
-        service_requests = cur.fetchall() 
+        service_requests = cur.fetchall()
+        print("Fetched Resukts: ")
+        print(service_requests)
 
+    # Render the dashboard template
     return render_template(
         'customerDashboard.html',
         services=services,
@@ -467,12 +484,12 @@ def initialize_database():
         with sqlite3.connect(db_path) as con:
             cur = con.cursor()
 
-            cur.execute("DROP TABLE IF EXISTS Users")
-            cur.execute("DROP TABLE IF EXISTS Services")
             cur.execute("DROP TABLE IF EXISTS ServiceRequests")
-            cur.execute("DROP TABLE IF EXISTS Reviews")
             cur.execute("DROP TABLE IF EXISTS Professionals")
+            cur.execute("DROP TABLE IF EXISTS Services")
+            cur.execute("DROP TABLE IF EXISTS Reviews")
             cur.execute("DROP TABLE IF EXISTS Customers")
+            cur.execute("DROP TABLE IF EXISTS Users")
 
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS Users (
@@ -566,16 +583,16 @@ def initialize_database():
                 VALUES (2, "ABC", 5, 9080800380, "Not Approved")
             """)
             cur.execute("""
-                INSERT OR IGNORE INTO ServiceRequests (service_id, customer_id, professional_id, date_of_request, service_status)
-                VALUES (1, 1, 1, CURRENT_DATE, "Requested")
-            """)
-            cur.execute("""
                 INSERT OR IGNORE INTO Users (name, email, password, role)
                 VALUES ("dummy", "naganathan55@gmail.com", "Naganathan@15", "Customer")
             """)
             cur.execute("""
                 INSERT OR IGNORE INTO Customers (userID, address, PinCode)
-                VALUES (2, "YMR Patti", 624001)
+                VALUES (3, "YMR Patti", 624001)
+            """)
+            cur.execute("""
+                INSERT OR IGNORE INTO ServiceRequests (service_id, customer_id, professional_id, date_of_request, service_status)
+                VALUES (1, 1, 1, CURRENT_DATE, "Requested")
             """)
 
             print("Tables created and seeded successfully!")
