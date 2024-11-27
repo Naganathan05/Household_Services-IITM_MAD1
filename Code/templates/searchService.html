@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block title %}Search{% endblock %}
+{% block cssfile %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/css/bootstrap.min.css" crossorigin="anonymous">
+<style>
+    body {
+        overflow-x: hidden;
+    }
+    .scrollable-table {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+</style>
+{% endblock %}
+{% block body %}
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <div class="container-fluid">
+        <a class="navbar-brand fs-3 fw-bold text-white" href="#">Customer Dashboard</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item">
+                    <a class="nav-link fs-5 fw-semibold text-white" href="/home">Home</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link fs-5 fw-semibold text-white" href="/searchCustomer">Search</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link fs-5 fw-semibold text-white" href="/summary">Summary</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link fs-5 fw-semibold text-white" href="/logout">Logout</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<!-- Search Container -->
+<div class="container mt-5">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white text-center">
+            <h3>Search for Services</h3>
+        </div>
+        <div class="card-body">
+            <label for="searchInput" class="form-label">Search by Service Name:</label>
+            <input type="text" class="form-control" id="searchInput" placeholder="Enter service name...">
+            <div id="searchResults" class="scrollable-table mt-4"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap and JavaScript for dynamic behavior -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const searchInput = document.getElementById("searchInput");
+        const searchResultsContainer = document.getElementById("searchResults");
+
+        // Function to fetch and display search results
+        const fetchResults = (serviceName) => {
+            fetch(`/searchCustomer/${encodeURIComponent(serviceName)}`)
+                .then(response => response.json())
+                .then(data => {
+                    searchResultsContainer.innerHTML = "";
+                    if (data.length > 0) {
+                        const table = document.createElement("table");
+                        table.className = "table table-bordered table-hover";
+                        const thead = `
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Service ID</th>
+                                    <th>Professional ID</th>
+                                    <th>Experience</th>
+                                    <th>Phone Number</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                        `;
+                        const tbody = data.map(item => `
+                            <tr>
+                                <td>${item.serviceID}</td>
+                                <td>${item.professionalID}</td>
+                                <td>${item.experience} years</td>
+                                <td>${item.phoneNumber}</td>
+                                <td>
+                                    <button class="btn btn-primary book-btn" data-service-id="${item.serviceID}" data-professional-id="${item.professionalID}">
+                                        Book
+                                    </button>
+                                </td>
+                            </tr>
+                        `).join("");
+                        table.innerHTML = thead + `<tbody>${tbody}</tbody>`;
+                        searchResultsContainer.appendChild(table);
+                    } else {
+                        searchResultsContainer.innerHTML = "<p class='text-muted'>No results found.</p>";
+                    }
+                })
+                .catch(error => {
+                    console.error("Error fetching results:", error);
+                    searchResultsContainer.innerHTML = "<p class='text-danger'>An error occurred while fetching results.</p>";
+                });
+        };
+
+        // Event listener for input changes
+        searchInput.addEventListener("input", () => {
+            const query = searchInput.value.trim();
+            if (query) fetchResults(query);
+        });
+
+        // Event delegation for book button clicks
+        searchResultsContainer.addEventListener("click", (e) => {
+            if (e.target.classList.contains("book-btn")) {
+                const serviceId = e.target.getAttribute("data-service-id");
+                const professionalId = e.target.getAttribute("data-professional-id");
+
+                fetch("/bookServiceCustomer", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        serviceId: serviceId,
+                        professionalId: professionalId
+                    })
+                })
+                .then(response => response.json())
+                .then(result => {
+                    alert(result.message || "Booking successful!");
+                })
+                .catch(error => {
+                    console.error("Error booking service:", error);
+                    alert("An error occurred while booking the service.");
+                });
+            }
+        });
+    });
+</script>
+{% endblock %}

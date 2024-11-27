@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}Service Remarks{% endblock %}
+
+{% block cssfile %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/css/bootstrap.min.css">
+{% endblock %}
+
+{% block body %}
+<div class="container my-5">
+    <h3 class="text-center">Service Remarks</h3>
+    <div class="card mx-auto" style="max-width: 600px; border: 2px solid #f3c6c6;">
+        <div class="card-body" style="background-color: #ffe6e6;">
+            <form action="/submit_remarks" method="POST">
+                <!-- Request ID -->
+                <div class="mb-3 text-center">
+                    <strong>Request ID:</strong> <span>{{ request_id }}</span>
+                </div>
+
+                <!-- Service Name -->
+                <div class="mb-3">
+                    <label for="service-name" class="form-label">Service Name</label>
+                    <input type="text" id="service-name" class="form-control" value="{{ service_name }}" readonly>
+                </div>
+
+                <!-- Description -->
+                <div class="mb-3">
+                    <label for="description" class="form-label">Description</label>
+                    <input type="text" id="description" class="form-control" value="{{ description }}" readonly>
+                </div>
+
+                <!-- Date -->
+                <div class="mb-3">
+                    <label for="date" class="form-label">Date</label>
+                    <input type="text" id="date" class="form-control" value="{{ date }}" readonly>
+                </div>
+
+                <!-- Professional ID -->
+                <div class="mb-3">
+                    <label for="professional-id" class="form-label">Professional ID</label>
+                    <input type="text" id="professional-id" class="form-control" value="{{ professional_id }}" readonly>
+                </div>
+
+                <!-- Professional Name -->
+                <div class="mb-3">
+                    <label for="professional-name" class="form-label">Professional Name</label>
+                    <input type="text" id="professional-name" class="form-control" value="{{ professional_name }}" readonly>
+                </div>
+
+                <!-- Contact No -->
+                <div class="mb-3">
+                    <label for="contact-no" class="form-label">Contact No.</label>
+                    <input type="text" id="contact-no" class="form-control" value="{{ contact_no }}" readonly>
+                </div>
+
+                <!-- Service Rating -->
+                <div class="mb-3">
+                    <label class="form-label">Service Rating</label>
+                    <div class="d-flex">
+                        <div>
+                            <input type="radio" id="star1" name="rating" value="1">
+                            <label for="star1">★</label>
+                        </div>
+                        <div>
+                            <input type="radio" id="star2" name="rating" value="2">
+                            <label for="star2">★</label>
+                        </div>
+                        <div>
+                            <input type="radio" id="star3" name="rating" value="3">
+                            <label for="star3">★</label>
+                        </div>
+                        <div>
+                            <input type="radio" id="star4" name="rating" value="4">
+                            <label for="star4">★</label>
+                        </div>
+                        <div>
+                            <input type="radio" id="star5" name="rating" value="5">
+                            <label for="star5">★</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Remarks -->
+                <div class="mb-3">
+                    <label for="remarks" class="form-label">Remarks (if any)</label>
+                    <textarea id="remarks" name="remarks" class="form-control" rows="3"></textarea>
+                </div>
+
+                <!-- Submit and Close Buttons -->
+                <div class="d-flex justify-content-between">
+                    <button type="submit" class="btn btn-primary">Submit</button>
+                    <a href="/close" class="btn btn-secondary">Close</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

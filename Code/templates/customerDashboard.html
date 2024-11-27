@@ -4,6 +4,8 @@
 
 {% block cssfile %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/css/bootstrap.min.css">
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/js/bootstrap.bundle.min.js"></script>
 {% endblock %}
 
 {% block body %}
@@ -22,6 +24,9 @@
                     <a class="nav-link fs-5 fw-semibold text-white" href="/profile">Profile</a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link fs-5 fw-semibold text-white" href="/searchService">Search</a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link fs-5 fw-semibold text-white" href="/logout">Logout</a>
                 </li>
             </ul>
@@ -29,22 +34,44 @@
     </div>
 </nav>
 
+
 <div class="container my-5">
     <!-- Section: Available Services -->
     <div class="text-center">
         <h2>Looking For?</h2>
-        <div class="row mt-4">
+        <div class="row mt-4" id="services">
             {% for service in services %}
             <div class="col-md-3 mb-3">
                 <div class="card">
                     <div class="card-body">
                         <h5 class="card-title text-center">{{ service[1] }}</h5>
-                        <a href="/select_service/{{ service[0] }}" class="btn btn-primary w-100">Select</a>
+                        <button 
+                            class="btn btn-primary w-100 get-professionals" 
+                            data-service-id="{{ service[0] }}" 
+                            data-service-name="{{ service[1] }}">Select</button>
                     </div>
                 </div>
             </div>
             {% endfor %}
         </div>
+    </div>
+
+    <!-- Section: Professionals Display -->
+    <div id="professionals-section" class="mt-5" style="display: none;">
+        <h3>Available Professionals for <span id="selected-service-name"></span></h3>
+        <table class="table table-striped table-bordered">
+            <thead class="table-primary">
+                <tr>
+                    <th>ID</th>
+                    <th>Professional Name</th>
+                    <th>Phone No.</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="professionals-list">
+                <!-- Professionals will be dynamically populated here -->
+            </tbody>
+        </table>
     </div>
 
     <hr class="my-5">
@@ -70,7 +97,11 @@
                 <td>{{ request[3] if request[3] else "N/A" }}</td>
                 <td>
                     {% if request[4] == "Requested" %}
-                    <a href="/close_request/{{ request[0] }}" class="btn btn-success btn-sm">Close?</a>
+                    <button 
+                        class="btn btn-success btn-sm close-request" 
+                        data-service-request-id="{{ request[0] }}">
+                        Close?
+                    </button>
                     {% else %}
                     {{ request[4] }}
                     {% endif %}
@@ -80,4 +111,81 @@
         </tbody>
     </table>
 </div>
+
+<!-- JavaScript to Handle GET Request and Render Professionals -->
+<script>
+    $(document).ready(function () {
+        $(".get-professionals").on("click", function () {
+            const serviceId = $(this).data("service-id");
+            const serviceName = $(this).data("service-name");
+
+            // Update the section title with the selected service name
+            $("#selected-service-name").text(serviceName);
+
+            // Fetch professionals via AJAX
+            $.ajax({
+                url: `/getProfessionals/${serviceName}`,
+                type: "GET",
+                success: function (response) {
+                    // Show the professionals section
+                    $("#professionals-section").show();
+
+                    // Clear any existing professionals
+                    $("#professionals-list").empty();
+
+                    // Populate professionals dynamically in table rows
+                    response.professionals.forEach(professional => {
+                        const professionalRow = `
+                            <tr>
+                                <td>${professional.id}</td>
+                                <td>${professional.name}</td>
+                                <td>${professional.phone}</td>
+                                <td>
+                                    <button 
+                                        class="btn btn-success book-service" 
+                                        data-professional-id="${professional.id}" 
+                                        data-service-id="${serviceId}">
+                                        Book
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                        $("#professionals-list").append(professionalRow);
+                    });
+                },
+                error: function () {
+                    alert("Failed to fetch professionals. Please try again.");
+                }
+            });
+        });
+
+        // Handle booking action
+        $(document).on("click", ".book-service", function () {
+            const professionalId = $(this).data("professional-id");
+            const serviceId = $(this).data("service-id");
+
+            // Perform the booking via AJAX
+            $.ajax({
+                url: "/bookService",
+                type: "POST",
+                contentType: "application/json",
+                data: JSON.stringify({ professionalId, serviceId }),
+                success: function () {
+                    alert("Service booked successfully!");
+                },
+                error: function () {
+                    alert("Failed to book service. Please try again.");
+                }
+            });
+        });
+
+        // Handle Close? button click
+        $(document).on("click", ".close-request", function () {
+            const serviceRequestID = $(this).data("service-request-id");
+
+            // Redirect to /getRemarks/:serviceRequestID
+            window.location.href = `/getRemarks/${serviceRequestID}`;
+        });
+    });
+</script>
 {% endblock %}
