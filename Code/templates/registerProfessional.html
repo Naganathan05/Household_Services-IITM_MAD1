@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Service Professional Signup{% endblock %}
+
+{% block cssfile %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/css/bootstrap.min.css">
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/js/bootstrap.bundle.min.js"></script>
+
+<style>
+    /* Ensure scrollbars appear for overflowing content */
+    html, body {
+        height: 100%;
+        overflow-y: auto;
+    }
+
+    /* Optional: Customize scrollbar appearance */
+    ::-webkit-scrollbar {
+        width: 8px;
+    }
+    ::-webkit-scrollbar-track {
+        background: #f1f1f1;
+    }
+    ::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 10px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="container d-flex justify-content-center align-items-center" style="min-height: 100vh;">
+    <div class="card shadow p-4" style="width: 100%; max-width: 600px;">
+        <h2 class="text-center text-primary">Service Professional Signup</h2>
+        <form method="POST" action="/registerProfessional" enctype="multipart/form-data">
+            <div class="mb-3">
+                <label for="email" class="form-label">Email ID (Username):</label>
+                <input type="email" class="form-control" id="email" name="email" placeholder="Enter your email" required>
+            </div>
+            <div class="mb-3">
+                <label for="password" class="form-label">Password:</label>
+                <input type="password" class="form-control" id="password" name="password" placeholder="Enter your password" required>
+            </div>
+            <div class="mb-3">
+                <label for="full_name" class="form-label">Full Name:</label>
+                <input type="text" class="form-control" id="full_name" name="full_name" placeholder="Enter your full name" required>
+            </div>
+            <div class="mb-3">
+                <label for="phone_number" class="form-label">Phone Number:</label>
+                <input type="tel" class="form-control" id="phone_number" name="phone_number" placeholder="Enter your phone number" pattern="[0-9]{10}" title="Enter a valid 10-digit phone number" required>
+            </div>
+            <div class="mb-3">
+                <label for="service_name" class="form-label">Service Name:</label>
+                <select class="form-select" id="service_name" name="service_name" required>
+                    <option value="" disabled selected>Select available services</option>
+                    {% for service in services %}
+                        <option value="{{ service }}">{{ service }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="experience" class="form-label">Experience (in years):</label>
+                <input type="number" class="form-control" id="experience" name="experience" placeholder="Enter your experience" min="0" required>
+            </div>
+            <div class="mb-3">
+                <label for="document" class="form-label">Attach Documents (Single PDF):</label>
+                <input type="file" class="form-control" id="document" name="document" accept=".pdf" required>
+            </div>
+            <div class="mb-3">
+                <label for="address" class="form-label">Address:</label>
+                <textarea class="form-control" id="address" name="address" rows="3" placeholder="Enter your address" required></textarea>
+            </div>
+            <div class="mb-3">
+                <label for="pincode" class="form-label">Pin Code:</label>
+                <input type="text" class="form-control" id="pincode" name="pincode" placeholder="Enter your pin code" required>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Register</button>
+        </form>
+        <div class="text-center mt-3">
+            <a href="/login" class="text-decoration-none text-primary">Login here</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -2,8 +2,16 @@ import sqlite3
 import os
 from flask import Flask, request, jsonify, redirect, session, render_template, abort
 from datetime import datetime
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
+
+UPLOAD_FOLDER = 'ProfessionalDoc'
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# Ensure the folder exists
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
 
 app.secret_key = os.getenv('SECRET_KEY', 'default-secret-key')
 db_path = 'C:/Users/Dell/householdDB'
@@ -128,6 +136,67 @@ def register_customer():
 
     finally:
         # Close the database connection
+        connection.close()
+    
+
+@app.route('/registerProfessional', methods=['POST'])
+def register_professional():
+    # Get form data
+    email = request.form.get('email')
+    password = request.form.get('password')
+    full_name = request.form.get('full_name')
+    service_name = request.form.get('service_name')
+    experience = request.form.get('experience')
+    address = request.form.get('address')
+    pincode = request.form.get('pincode')
+    document = request.files.get('document')
+    phoneNumber = request.form.get('phone_number')
+
+    if not document or document.filename == '':
+        return jsonify({'status': 'failure', 'message': 'Document is required'}), 400
+
+    connection = sqlite3.connect(db_path)
+    cursor = connection.cursor()
+
+    try:
+        # Check if user already exists
+        cursor.execute("SELECT id FROM Users WHERE email = ?", (email,))
+        existing_user = cursor.fetchone()
+
+        if existing_user:
+            return jsonify({'status': 'failure', 'message': 'Email already exists'}), 409
+
+        # Insert user into Users table
+        cursor.execute("""
+            INSERT INTO Users (name, email, password, role)
+            VALUES (?, ?, ?, ?)
+        """, (full_name, email, password, "Professional"))
+        user_id = cursor.lastrowid
+
+        # Insert professional details into Professionals table
+        cursor.execute("""
+            INSERT INTO Professionals (userID, serviceName, experience, address, PinCode, phoneNumber)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (user_id, service_name, experience, address, pincode, phoneNumber))
+        professional_id = cursor.lastrowid
+
+        # Save the uploaded document
+        filename = f"{professional_id}_{secure_filename(document.filename)}"
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        document.save(filepath)
+
+        # Commit changes
+        connection.commit()
+
+        return redirect('/login')
+
+    except sqlite3.Error as e:
+        # Rollback in case of database error
+        connection.rollback()
+        print(f"Database error: {e}")
+        return jsonify({'status': 'failure', 'message': 'Internal server error'}), 500
+
+    finally:
         connection.close()
 
 
@@ -1019,6 +1088,25 @@ def search_by_pincode(pincode):
     connection.close()
     return jsonify(services)
 
+@app.route('/registerProfessional', methods=['GET'])
+def professional_signup():
+    connection = sqlite3.connect(db_path)
+    cursor = connection.cursor()
+
+    try:
+        cursor.execute("SELECT name FROM Services")
+        services_data = cursor.fetchall()
+        available_services = [row[0] for row in services_data]
+
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+        available_services = []
+
+    finally:
+        connection.close()
+    return render_template('registerProfessional.html', services=available_services)
+
+
 def initialize_database():
     try:
         with sqlite3.connect(db_path) as con:
@@ -1060,6 +1148,8 @@ def initialize_database():
                     serviceName VARCHAR(255) NOT NULL,
                     experience INTEGER NOT NULL,
                     phoneNumber INTEGER NOT NULL,
+                    address VARCHAR(255) NOT NULL,
+                    PinCode VARCHAR(10) NOT NULL,
                     status VARCHAR(255),
                     FOREIGN KEY (userID) REFERENCES Users (id),
                     FOREIGN KEY (serviceName) REFERENCES Services (name)
@@ -1120,8 +1210,8 @@ def initialize_database():
                 VALUES ("worker", "naganathan155@gmail.com", "Naganathan@15", "Professional")
             """)
             cur.execute("""
-                INSERT OR IGNORE INTO Professionals (userID, serviceName, experience, phoneNumber, status)
-                VALUES (2, "ABC", 5, 9080800380, "Not Approved")
+                INSERT OR IGNORE INTO Professionals (userID, serviceName, address, PinCode, experience, phoneNumber, status)
+                VALUES (2, "ABC", "M1/63 RM Colony", 624001, 5, 9080800380, "Not Approved")
             """)
             cur.execute("""
                 INSERT OR IGNORE INTO Users (name, email, password, role)
