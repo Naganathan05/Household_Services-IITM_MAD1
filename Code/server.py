@@ -12,9 +12,16 @@ db_path = 'C:/Users/Dell/householdDB'
 def home():
     return "Welcome to the Household Services App!"
 
-@app.route("/adminLogin", methods=['GET'])
-def loginAdmin():
+@app.route("/login", methods=['GET'])
+def login():
     return render_template("login.html")
+
+@app.route('/logout', methods=['GET'])
+def logout():
+    session.pop('id', None)
+    session.pop('role', None) 
+
+    return redirect('/login')
 
 @app.route("/loginUser", methods=['POST'])
 def loginUser():
@@ -48,7 +55,7 @@ def loginUser():
                         return redirect("/admin")
                     elif role == 'Customer':
                         return redirect("/customer")
-                    elif role == "Professional":
+                    elif role == 'Professional':
                         return redirect("/professionalDashboard")
 
                 else:
@@ -270,6 +277,10 @@ def getServiceRemarks():
 @app.route('/searchService', methods = ['GET'])
 def getSearchService():
     return render_template("searchService.html")
+
+@app.route('/searchProfessional', methods = ['GET'])
+def getSearchProfessional():
+    return render_template("searchProfessional.html")
 
 @app.route('/customer', methods=['GET'])
 def customerDashboard():
@@ -883,6 +894,102 @@ def reject_service_request(serviceRequestID):
     except Exception as e:
         print(f"Error updating service request: {e}")
         return "Error processing the request", 500
+    
+@app.route('/searchSRLocation/<locationName>', methods=['GET'])
+def search_by_location(locationName):
+    connection = sqlite3.connect(db_path)
+    cursor = connection.cursor()
+
+    query = '''
+            SELECT 
+                sr.id AS service_request_id,
+                u.name AS customer_name,
+                u.id AS user_id,
+                c.address AS address,
+                c.PinCode AS pincode,
+                u.email AS phone,  -- Assuming email is the phone number as per provided schema
+                sr.service_status AS status,
+                sr.date_of_request AS date,
+                r.rating AS rating,
+                c.phoneNumber as phoneNumber
+            FROM 
+                ServiceRequests sr
+            JOIN 
+                Customers c ON sr.customer_id = c.id
+            JOIN 
+                Users u ON c.userID = u.id
+            LEFT JOIN 
+                Reviews r ON sr.id = r.service_request_id
+            WHERE c.address LIKE ?
+        '''
+    cursor.execute(query, ('%' + locationName + '%',))
+    results = cursor.fetchall()
+    print(results)
+
+    services = []
+    for row in results:
+        services.append({
+            "id": row[0],
+            "customerName": row[1],
+            "phone": row[9],
+            "address": row[3],
+            "pincode": row[4],
+            "date": row[7],
+            "status": row[6],
+            "rating": row[8] if row[8] else 'N/A'
+        })
+
+    cursor.close()
+    connection.close()
+    return jsonify(services)
+
+
+@app.route('/searchSRPincode/<pincode>', methods=['GET'])
+def search_by_pincode(pincode):
+    connection = sqlite3.connect(db_path)
+    cursor = connection.cursor()
+
+    query = '''
+            SELECT 
+                sr.id AS service_request_id,
+                u.name AS customer_name,
+                u.id AS user_id,
+                c.address AS address,
+                c.PinCode AS pincode,
+                u.email AS phone,  -- Assuming email is the phone number as per provided schema
+                sr.service_status AS status,
+                sr.date_of_request AS date,
+                r.rating AS rating,
+                c.phoneNumber AS phoneNumber
+            FROM 
+                ServiceRequests sr
+            JOIN 
+                Customers c ON sr.customer_id = c.id
+            JOIN 
+                Users u ON c.userID = u.id
+            LEFT JOIN 
+                Reviews r ON sr.id = r.service_request_id
+            WHERE c.PinCode LIKE ?
+    '''
+    cursor.execute(query, ('%' + pincode + '%',))
+    results = cursor.fetchall()
+
+    services = []
+    for row in results:
+        services.append({
+            "id": row[0],
+            "customerName": row[1],
+            "phone": row[9],
+            "address": row[3],
+            "pincode": row[4],
+            "date": row[7],
+            "status": row[6],
+            "rating": row[8] if row[8] else 'N/A'
+        })
+
+    cursor.close()
+    connection.close()
+    return jsonify(services)
 
 def initialize_database():
     try:
@@ -938,7 +1045,7 @@ def initialize_database():
                     userID INTEGER NOT NULL,
                     phoneNumber INTEGER NOT NULL,
                     address VARCHAR(255) NOT NULL,
-                    PinCode INTEGER NOT NULL
+                    PinCode VARCHAR(10) NOT NULL
                 )
                         
             """)
@@ -994,7 +1101,7 @@ def initialize_database():
             """)
             cur.execute("""
                 INSERT OR IGNORE INTO Customers (userID, phoneNumber, address, PinCode)
-                VALUES (3, 9080800380, "YMR Patti", 624001)
+                VALUES (3, 9080800380, "YMR Patti", "624001")
             """)
             cur.execute("""
                 INSERT OR IGNORE INTO ServiceRequests (service_id, customer_id, professional_id, date_of_request, service_status)

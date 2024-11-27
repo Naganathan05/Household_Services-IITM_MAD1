@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}Search Services{% endblock %}
+
+{% block cssfile %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/css/bootstrap.min.css">
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/js/bootstrap.bundle.min.js"></script>
+{% endblock %}
+
+{% block body %}
+<div class="container mt-5">
+    <!-- Header Section -->
+    <h1 class="text-primary text-center fw-bold">Welcome to Professional</h1>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary mt-3">
+        <div class="container-fluid">
+            <div class="navbar-brand">Dashboard</div>
+            <div class="collapse navbar-collapse">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link text-white" href="/professionalDashboard">Home</a></li>
+                    <li class="nav-item"><a class="nav-link text-white" href="/searchProfessional">Search</a></li>
+                    <li class="nav-item"><a class="nav-link text-white" href="/summary">Summary</a></li>
+                    <li class="nav-item"><a class="nav-link text-white" href="/logout">Logout</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Search Section -->
+    <div class="mt-4">
+        <h3 class="text-success fw-bold">Search Functionality</h3>
+        <div class="input-group mb-3">
+            <select id="searchMode" class="form-select">
+                <option value="location">Location Name</option>
+                <option value="pincode">Pincode</option>
+            </select>
+            <input type="text" id="searchText" class="form-control" placeholder="Enter search text (e.g., City or Pincode)">
+        </div>
+    </div>
+
+    <!-- Search Results Section -->
+    <div id="searchResults" class="mt-5">
+        <h3 class="text-secondary fw-bold">Search Results</h3>
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Customer Name</th>
+                    <th>Contact Phone</th>
+                    <th>Location (with Pin Code)</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>Rating</th>
+                </tr>
+            </thead>
+            <tbody id="resultsTableBody">
+                <!-- Dynamically populated results will appear here -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+// Function to handle the search input change
+$('#searchText').on('input', function() {
+    let searchMode = $('#searchMode').val();
+    let searchText = $(this).val();
+    
+    // Determine the appropriate endpoint based on search mode
+    let endpoint = '';
+    if (searchMode === 'location') {
+        endpoint = `/searchSRLocation/${searchText}`;
+    } else if (searchMode === 'pincode') {
+        endpoint = `/searchSRPincode/${searchText}`;
+    }
+
+    // Send GET request to fetch search results
+    if (searchText) {
+        $.get(endpoint, function(data) {
+            // Populate the search results dynamically
+            let resultsTableBody = $('#resultsTableBody');
+            resultsTableBody.empty(); // Clear previous results
+
+            if (data.length > 0) {
+                data.forEach(function(service) {
+                    resultsTableBody.append(`
+                        <tr>
+                            <td>${service.id}</td>
+                            <td>${service.customerName}</td>
+                            <td>${service.phone}</td>
+                            <td>${service.address} (${service.pincode})</td>
+                            <td>${service.date}</td>
+                            <td>${service.status}</td>
+                            <td>${service.rating}</td>
+                        </tr>
+                    `);
+                });
+            } else {
+                resultsTableBody.append('<tr><td colspan="6" class="text-center">No results found</td></tr>');
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
