@@ -1,50 +1,91 @@
 {% extends "base.html" %}
-{% block title %}Customer Signup{% endblock %}
-{% block cssfile %}
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/css/bootstrap.min.css" integrity="sha384-F3w7mX95PdgyTmZZMECAngseQB83DfGTowi0iMjiWaeVhAn4FJkqJByhZMI3AhiU" crossorigin="anonymous">
-<link rel="stylesheet" href="{{ url_for('static', filename='customerSignup.css') }}">
-{% endblock %}
-{% block body %}
 
-<!-- Customer Registration Form -->
-<div class="container my-5">
-    <div class="row justify-content-center">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header bg-primary text-white text-center">
-                    <h3>Customer Signup</h3>
-                </div>
-                <div class="card-body">
-                    <form method="POST" action="/registerCustomer">
-                        <div class="mb-3">
-                            <label for="email" class="form-label">Email ID (Username)</label>
-                            <input type="email" class="form-control" id="email" name="email" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="password" class="form-label">Password</label>
-                            <input type="password" class="form-control" id="password" name="password" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="fullname" class="form-label">Full Name</label>
-                            <input type="text" class="form-control" id="fullname" name="fullname" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="address" class="form-label">Address</label>
-                            <textarea class="form-control" id="address" name="address" rows="3" required></textarea>
-                        </div>
-                        <div class="mb-3">
-                            <label for="pin_code" class="form-label">Pin Code</label>
-                            <input type="text" class="form-control" id="pin_code" name="pin_code" required>
-                        </div>
-                        <button type="submit" class="btn btn-primary w-100">Register</button>
-                    </form>
-                </div>
-                <div class="card-footer text-center">
-                    <p>Already have an account? <a href="/adminLogin">Login here</a></p>
-                </div>
+{% block title %}Customer Signup{% endblock %}
+
+{% block cssfile %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/css/bootstrap.min.css">
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/js/bootstrap.bundle.min.js"></script>
+{% endblock %}
+
+{% block body %}
+<div class="container d-flex justify-content-center align-items-center vh-100">
+    <div class="card shadow p-4" style="width: 400px;">
+        <h2 class="text-center text-primary">Customer Signup</h2>
+        <!-- Alert Section -->
+        <div id="alert-container"></div>
+        <!-- Form -->
+        <form id="signup-form">
+            <div class="mb-3">
+                <label for="email" class="form-label">Email ID (Username):</label>
+                <input type="email" class="form-control" id="email" name="email" placeholder="Enter your email" required>
             </div>
+            <div class="mb-3">
+                <label for="password" class="form-label">Password:</label>
+                <input type="password" class="form-control" id="password" name="password" placeholder="Enter your password" required>
+            </div>
+            <div class="mb-3">
+                <label for="full_name" class="form-label">Full Name:</label>
+                <input type="text" class="form-control" id="full_name" name="full_name" placeholder="Enter your full name" required>
+            </div>
+            <div class="mb-3">
+                <label for="phoneNumber" class="form-label">Phone Number:</label>
+                <input type="tel" class="form-control" id="phoneNumber" name="phoneNumber" placeholder="Enter your phone number" required>
+            </div>
+            <div class="mb-3">
+                <label for="address" class="form-label">Address:</label>
+                <textarea class="form-control" id="address" name="address" rows="3" placeholder="Enter your address" required></textarea>
+            </div>
+            <div class="mb-3">
+                <label for="pincode" class="form-label">Pin Code:</label>
+                <input type="text" class="form-control" id="pincode" name="pincode" placeholder="Enter your pin code" required>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Register</button>
+        </form>
+        <div class="text-center mt-3">
+            <a href="/login" class="text-decoration-none text-primary">Login here</a>
         </div>
     </div>
 </div>
 
+<script>
+    // Handle form submission using AJAX
+    $(document).ready(function () {
+        $("#signup-form").on("submit", function (e) {
+            e.preventDefault(); // Prevent default form submission
+
+            const formData = $(this).serialize(); // Serialize form data for POST request
+
+            $.ajax({
+                url: "/registerCustomer", // Backend route for registration
+                type: "POST",
+                data: formData,
+                success: function (response) {
+                    // If registration succeeds, redirect to login
+                    if (response.success) {
+                        window.location.href = "/login";
+                    } else {
+                        // If registration fails, display error message
+                        displayAlert("danger", response.message);
+                    }
+                },
+                error: function () {
+                    // Handle unexpected server errors
+                    displayAlert("danger", "An unexpected error occurred. Please try again.");
+                }
+            });
+        });
+
+        // Function to display alert messages
+        function displayAlert(type, message) {
+            const alertHTML = `
+                <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            `;
+            $("#alert-container").html(alertHTML);
+        }
+    });
+</script>
 {% endblock %}

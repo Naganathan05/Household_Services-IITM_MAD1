@@ -70,6 +70,67 @@ def loginUser():
 
     return redirect("/login")
 
+@app.route('/registerCustomer', methods=['POST'])
+def register_customer():
+    email = request.form.get('email')
+    password = request.form.get('password')
+    full_name = request.form.get('full_name')
+    phone_number = request.form.get('phoneNumber')
+    address = request.form.get('address')
+    pincode = request.form.get('pincode')
+
+    connection = sqlite3.connect(db_path)
+    cursor = connection.cursor()
+
+    try:
+        # Check if the email already exists
+        cursor.execute("SELECT id FROM Users WHERE email = ?", (email,))
+        existing_user = cursor.fetchone()
+
+        if existing_user:
+            return jsonify({
+                "success": False,
+                "message": "Email ID is already registered. Please use a different email."
+            }), 200
+
+        # Insert into Users table
+        cursor.execute("""
+            INSERT INTO Users (name, email, password, role)
+            VALUES (?, ?, ?, ?)
+        """, (full_name, email, password, "Customer"))
+
+        # Get the newly created user ID
+        user_id = cursor.lastrowid
+
+        # Insert into Customers table
+        cursor.execute("""
+            INSERT INTO Customers (userID, address, phoneNumber, PinCode)
+            VALUES (?, ?, ?, ?)
+        """, (user_id, address, phone_number, pincode))
+
+        # Commit the transaction
+        connection.commit()
+
+        # Send success response
+        return jsonify({
+            "success": True,
+            "message": "Registration successful! Please log in."
+        }), 200
+
+    except sqlite3.Error as e:
+        # Rollback in case of an error
+        connection.rollback()
+        print(f"Database error: {e}")
+        return jsonify({
+            "success": False,
+            "message": "An unexpected error occurred. Please try again later."
+        }), 500
+
+    finally:
+        # Close the database connection
+        connection.close()
+
+
 @app.route('/admin', methods=['GET'])
 def getAdminDashboard():
     try:
@@ -458,39 +519,6 @@ def search_customers():
     except Exception as e:
         print("Error fetching customers:", e)
         return {"message": "An error occurred while fetching customers"}, 500
-
-@app.route('/registerCustomer', methods=['POST'])
-def register_customer():
-    try:
-        # Get data from the form submission
-        email = request.form['email']
-        password = request.form['password']
-        fullname = request.form['fullname']
-        address = request.form['address']
-        pin_code = request.form['pin_code']
-
-        # Connect to the database
-        with sqlite3.connect(db_path) as con:
-            cur = con.cursor()
-
-            cur.execute("""
-                INSERT INTO Users (email, password, name, role)
-                VALUES (?, ?, ?, ?)
-            """, (email, password, fullname, 'Customer'))
-
-
-            user_id = cur.lastrowid
-            cur.execute("""
-                INSERT INTO Customers (userID, address, PinCode)
-                VALUES (?, ?, ?)
-            """, (user_id, address, pin_code))
-
-            con.commit()
-
-        return redirect('/adminLogin')
-
-    except Exception as e:
-        return {"message": f"An error occurred: {str(e)}"}, 500
     
 @app.route('/getProfessionals/<serviceName>', methods=['GET'])
 def get_professionals(serviceName):
