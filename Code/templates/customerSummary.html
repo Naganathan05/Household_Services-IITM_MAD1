@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Customer Summary{% endblock %}
+
+{% block cssfile %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/css/bootstrap.min.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+{% endblock %}
+
+{% block body %}
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <div class="container-fluid">
+        <a class="navbar-brand fs-3 fw-bold text-white" href="#">Customer Dashboard</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item">
+                    <a class="nav-link fs-5 fw-semibold text-white" href="/customer">Home</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link fs-5 fw-semibold text-white" href="/profile">Profile</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link fs-5 fw-semibold text-white" href="/customerSummary">Summary</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link fs-5 fw-semibold text-white" href="/searchService">Search</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link fs-5 fw-semibold text-white" href="/logout">Logout</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<div class="container mt-5">
+    <h3 class="text-center">Service Requests Summary</h3>
+    
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <canvas id="serviceStatsChart"></canvas>
+        </div>
+        <div class="col-md-6">
+            <ul class="list-group">
+                <li class="list-group-item">Requested: <span id="requestedCount"></span></li>
+                <li class="list-group-item">Closed: <span id="closedCount"></span></li>
+                <li class="list-group-item">Assigned: <span id="assignedCount"></span></li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<script>
+    async function fetchStats() {
+        try {
+            const response = await fetch('/api/customerSummary'); // Change endpoint accordingly
+            const data = await response.json();
+
+            // Update counts in the DOM
+            document.getElementById('requestedCount').innerText = data.requested || 0;
+            document.getElementById('closedCount').innerText = data.closed || 0;
+            document.getElementById('assignedCount').innerText = data.assigned || 0;
+
+            // Chart for service requests (requested, closed, assigned)
+            new Chart(document.getElementById('serviceStatsChart'), {
+                type: 'bar',
+                data: {
+                    labels: ['Requested', 'Closed', 'Assigned'],
+                    datasets: [{
+                        label: 'Service Requests',
+                        data: [data.requested || 0, data.closed || 0, data.assigned || 0],
+                        backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56'],
+                        borderColor: ['#FF6384', '#36A2EB', '#FFCE56'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        } catch (error) {
+            console.error('Error fetching stats:', error);
+        }
+    }
+
+    window.onload = fetchStats;
+</script>
+{% endblock %}

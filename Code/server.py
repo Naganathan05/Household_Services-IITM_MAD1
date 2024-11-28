@@ -9,7 +9,6 @@ app = Flask(__name__)
 UPLOAD_FOLDER = 'ProfessionalDoc'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# Ensure the folder exists
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
@@ -91,7 +90,6 @@ def register_customer():
     cursor = connection.cursor()
 
     try:
-        # Check if the email already exists
         cursor.execute("SELECT id FROM Users WHERE email = ?", (email,))
         existing_user = cursor.fetchone()
 
@@ -100,33 +98,26 @@ def register_customer():
                 "success": False,
                 "message": "Email ID is already registered. Please use a different email."
             }), 200
-
-        # Insert into Users table
+        
         cursor.execute("""
             INSERT INTO Users (name, email, password, role)
             VALUES (?, ?, ?, ?)
         """, (full_name, email, password, "Customer"))
 
-        # Get the newly created user ID
         user_id = cursor.lastrowid
 
-        # Insert into Customers table
         cursor.execute("""
             INSERT INTO Customers (userID, address, phoneNumber, PinCode)
             VALUES (?, ?, ?, ?)
         """, (user_id, address, phone_number, pincode))
 
-        # Commit the transaction
         connection.commit()
-
-        # Send success response
         return jsonify({
             "success": True,
             "message": "Registration successful! Please log in."
         }), 200
 
     except sqlite3.Error as e:
-        # Rollback in case of an error
         connection.rollback()
         print(f"Database error: {e}")
         return jsonify({
@@ -135,13 +126,11 @@ def register_customer():
         }), 500
 
     finally:
-        # Close the database connection
         connection.close()
     
 
 @app.route('/registerProfessional', methods=['POST'])
 def register_professional():
-    # Get form data
     email = request.form.get('email')
     password = request.form.get('password')
     full_name = request.form.get('full_name')
@@ -159,39 +148,33 @@ def register_professional():
     cursor = connection.cursor()
 
     try:
-        # Check if user already exists
         cursor.execute("SELECT id FROM Users WHERE email = ?", (email,))
         existing_user = cursor.fetchone()
 
         if existing_user:
             return jsonify({'status': 'failure', 'message': 'Email already exists'}), 409
 
-        # Insert user into Users table
         cursor.execute("""
             INSERT INTO Users (name, email, password, role)
             VALUES (?, ?, ?, ?)
         """, (full_name, email, password, "Professional"))
         user_id = cursor.lastrowid
 
-        # Insert professional details into Professionals table
         cursor.execute("""
             INSERT INTO Professionals (userID, serviceName, experience, address, PinCode, phoneNumber)
             VALUES (?, ?, ?, ?, ?, ?)
         """, (user_id, service_name, experience, address, pincode, phoneNumber))
         professional_id = cursor.lastrowid
 
-        # Save the uploaded document
         filename = f"{professional_id}_{secure_filename(document.filename)}"
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         document.save(filepath)
 
-        # Commit changes
         connection.commit()
 
         return redirect('/login')
 
     except sqlite3.Error as e:
-        # Rollback in case of database error
         connection.rollback()
         print(f"Database error: {e}")
         return jsonify({'status': 'failure', 'message': 'Internal server error'}), 500
@@ -226,7 +209,6 @@ def getAdminDashboard():
                 for row in cur.fetchall()
             ]
             
-            # Fetch and structure service requests data
             cur.execute("""
                 SELECT sr.id, u.id AS assigned_professional, sr.date_of_request, sr.service_status
                 FROM ServiceRequests sr
@@ -241,8 +223,7 @@ def getAdminDashboard():
                 }
                 for row in cur.fetchall()
             ]
-        
-        # Render the template with the structured data
+
         return render_template(
             'adminDashbord.html',
             services=services,
@@ -260,7 +241,6 @@ def deleteService(serviceID):
         with sqlite3.connect(db_path) as con:
             cur = con.cursor()
 
-            # Step 1: Get the service name for the given service ID
             cur.execute("SELECT name FROM Services WHERE id = ?", (serviceID,))
             service = cur.fetchone()
 
@@ -268,14 +248,8 @@ def deleteService(serviceID):
                 return {"message": "Service not found"}, 404
 
             service_name = service[0]
-
-            # Step 2: Delete related service requests
             cur.execute("DELETE FROM ServiceRequests WHERE service_id = ?", (serviceID,))
-
-            # Step 3: Remove professionals offering this service
             cur.execute("DELETE FROM Professionals WHERE serviceName = ?", (service_name,))
-
-            # Step 4: Delete the service itself
             cur.execute("DELETE FROM Services WHERE id = ?", (serviceID,))
 
             con.commit()
@@ -290,8 +264,6 @@ def getEditService(serviceID):
     try:
         with sqlite3.connect(db_path) as con:
             cur = con.cursor()
-
-            # Fetch service details for the given service ID
             cur.execute("SELECT name, description, price, time_required FROM Services WHERE id = ?", (serviceID,))
             service = cur.fetchone()
 
@@ -315,26 +287,22 @@ def getEditService(serviceID):
 @app.route('/editService/<int:serviceID>', methods=['PUT'])
 def editService(serviceID):
     try:
-        # Parse the JSON data sent from the frontend
         data = request.json
         serviceName = data.get('serviceName')
         description = data.get('description')
         basePrice = data.get('basePrice')
         timeRequired = data.get('timeRequired')
 
-        # Validate the required fields
         if not (serviceName and description and basePrice and timeRequired):
             return {"message": "All fields are required"}, 400
 
         with sqlite3.connect(db_path) as con:
             cur = con.cursor()
 
-            # Check if the service exists
             cur.execute("SELECT id FROM Services WHERE id = ?", (serviceID,))
             if not cur.fetchone():
                 return {"message": "Service not found"}, 404
 
-            # Update the service details in the database
             cur.execute("""
                 UPDATE Services
                 SET name = ?, description = ?, price = ?, time_required = ?
@@ -357,16 +325,10 @@ def newService():
 @app.route('/newService', methods=['POST'])
 def addService():
     try:
-        print("Received a POST Request")
-        # data = request.get_json()
         service_name = request.form.get('serviceName')
         description = request.form.get('description')
         base_price = request.form.get('basePrice')
         timeRequired = request.form.get('timeRequired')
-        # service_name = data.get('serviceName')
-        # description = data.get('description')
-        # base_price = data.get('basePrice')
-        # timeRequired = data.get('timeRequired')
 
         if not service_name or not base_price:
             print("Error 1")
@@ -416,26 +378,22 @@ def getSearchProfessional():
 def customerDashboard():
     user_id = session['id']
 
-    # Fetch customer_id using userID from Customers table
     with sqlite3.connect(db_path) as con:
         cur = con.cursor()
         cur.execute("SELECT id FROM Customers WHERE userID = ?", (user_id,))
         result = cur.fetchone()
 
     if not result:
-        # If no customer entry exists for the userID, redirect to login or error page
         return redirect('adminLogin')
 
-    customer_id = result[0]  # Extract customer_id from the query result
+    customer_id = result[0]
     print("Mapped Customer ID: ", customer_id)
 
-    # Fetch available services
     with sqlite3.connect(db_path) as con:
         cur = con.cursor()
         cur.execute("SELECT id, name FROM Services")
-        services = cur.fetchall()  # List of tuples [(id, name), ...]
-
-    # Fetch all service requests for the mapped customer_id
+        services = cur.fetchall()
+    
     with sqlite3.connect(db_path) as con:
         cur = con.cursor()
         cur.execute("""
@@ -454,7 +412,6 @@ def customerDashboard():
         print("Fetched Resukts: ")
         print(service_requests)
 
-    # Render the dashboard template
     return render_template(
         'customerDashboard.html',
         services=services,
@@ -464,21 +421,18 @@ def customerDashboard():
 @app.route('/searchServiceRequests', methods=['GET'])
 def search_service_requests():
     try:
-        # Get the search word (professional_id) from query parameters
         professional_id = request.args.get('q', type=int)
 
         with sqlite3.connect(db_path) as con:
             cur = con.cursor()
 
-            # Query to fetch records matching the searched professional_id
             cur.execute("""
                 SELECT sr.id, u.id AS assigned_professional, sr.date_of_request, sr.service_status
                 FROM ServiceRequests sr
                 LEFT JOIN Professionals u ON sr.professional_id = u.id
                 WHERE sr.professional_id = ?
             """, (professional_id,))
-            
-            # Fetch the matching records and format them
+
             service_requests = [
                 {
                     "id": row[0],
@@ -498,25 +452,21 @@ def search_service_requests():
 @app.route('/searchProfessionals', methods=['GET'])
 def search_professionals():
     try:
-        # Get the search word (professional name) from query parameters
         search_word = request.args.get('q', type=str)
 
-        # Ensure search_word is not None
         if not search_word:
             return {"message": "Search word cannot be empty"}, 400
 
         with sqlite3.connect(db_path) as con:
             cur = con.cursor()
 
-            # Correct SQL query to fetch professionals by name
             cur.execute("""
                 SELECT u.id AS userID, u.name AS name, p.serviceName AS service_name, p.status
                 FROM Professionals p
                 INNER JOIN Users u ON p.userID = u.id
                 WHERE u.name LIKE ?
-            """, (f"%{search_word}%",))  # Use LIKE for partial matching
-            
-            # Fetch the matching records and format them
+            """, (f"%{search_word}%",))
+
             professionals = [
                 {
                     "userID": row[0],
@@ -526,8 +476,6 @@ def search_professionals():
                 }
                 for row in cur.fetchall()
             ]
-
-        # Return the results in JSON format
         return jsonify(professionals), 200
 
     except sqlite3.OperationalError as e:
@@ -540,36 +488,26 @@ def search_professionals():
 @app.route('/searchCustomers', methods=['GET'])
 def search_customers():
     try:
-        # Log the search request
-        print("Search Came for Customers !!")
-        
-        # Get the search word (customer name) from query parameters
         search_word = request.args.get('q', type=str)
-
-        # Ensure search_word is not None
         if search_word is None:
             return {"message": "Search word cannot be None"}, 400
 
         with sqlite3.connect(db_path) as con:
             cur = con.cursor()
 
-            # Adjust the SQL query based on whether the search word is empty
             if search_word.strip() == "":
-                # Fetch all records where role is Customer
                 cur.execute("""
                     SELECT id AS userID, name, email, role
                     FROM Users
                     WHERE role = 'Customer'
                 """)
             else:
-                # Fetch records matching the search word and role is Customer
                 cur.execute("""
                     SELECT id AS userID, name, email
                     FROM Users
                     WHERE role = 'Customer' AND name LIKE ?
-                """, (f"%{search_word}%",))  # Use LIKE for partial matching
-            
-            # Fetch the matching records and format them
+                """, (f"%{search_word}%",))
+
             customers = [
                 {
                     "name": row[1],
@@ -579,7 +517,6 @@ def search_customers():
                 for row in cur.fetchall()
             ]
 
-        # Return the results in JSON format
         return jsonify(customers), 200
 
     except sqlite3.OperationalError as e:
@@ -594,7 +531,6 @@ def get_professionals(serviceName):
     try:
         with sqlite3.connect(db_path) as con:
             cur = con.cursor()
-            # Query to fetch professionals who match the given service name
 
             cur.execute("""
                 SELECT p.userID, u.name, p.phoneNumber 
@@ -603,12 +539,8 @@ def get_professionals(serviceName):
                 WHERE p.serviceName = ?
             """, (serviceName,))
             
-            # Fetch all matching professionals
             professionals = cur.fetchall()
-            print("Reached Here !!")
-            print(professionals)
 
-            # Format the response
             response = {
                 "status": "success",
                 "professionals": [
@@ -618,7 +550,6 @@ def get_professionals(serviceName):
             return jsonify(response), 200
 
     except Exception as e:
-        # Handle any exceptions and return an error response
         response = {
             "status": "error",
             "message": str(e)
@@ -630,20 +561,16 @@ def get_professionals(serviceName):
 @app.route('/bookService', methods=['POST'])
 def book_service():
     try:
-        # Parse the JSON request body
-        print("Reached Here into Booking !!")
         data = request.get_json()
         service_id = data.get('serviceId')
         professional_User_id = data.get('professionalId')
-        
-        # Get the user ID from the session
+
         user_id = session.get('id')
         print("This is USER ID: ")
         print(user_id)
         if not user_id:
             return {"message": "Unauthorized. Please log in as a customer."}, 401
 
-        # Fetch customer_id from the database using user_id
         with sqlite3.connect(db_path) as con:
             cur = con.cursor()
             cur.execute("""
@@ -654,9 +581,8 @@ def book_service():
             if not customer:
                 return {"message": "Customer not found for the given user."}, 404
 
-            customer_id = customer[0]  # Extract customer_id from the result
+            customer_id = customer[0]
 
-        # Fetch professional_id from the Professionals table using user_id
         with sqlite3.connect(db_path) as con:
             cur = con.cursor()
             cur.execute("""
@@ -667,9 +593,7 @@ def book_service():
             if not professional:
                 return {"message": "Professional not found for the given user."}, 404
 
-            professional_id = professional[0]  # Extract professional_id from the result
-
-        # Check if a service request already exists
+            professional_id = professional[0] 
         with sqlite3.connect(db_path) as con:
             cur = con.cursor()
             cur.execute("""
@@ -681,11 +605,9 @@ def book_service():
             if existing_request:
                 return {"message": "Service request already exists for this customer and professional."}, 400
 
-        # Set the current date for the service request
         date_of_request = datetime.now().strftime('%Y-%m-%d')
         service_status = "Requested"
 
-        # Insert a new record into ServiceRequests table
         with sqlite3.connect(db_path) as con:
             cur = con.cursor()
             cur.execute("""
@@ -693,34 +615,24 @@ def book_service():
                 VALUES (?, ?, ?, ?, ?)
             """, (service_id, customer_id, professional_id, date_of_request, service_status))
 
-            # Commit the transaction
         con.commit()
-
-        # Return a success message
         return {"message": "Service request booked successfully!"}, 200
 
     except Exception as e:
-        # Handle errors and return an appropriate message
         print(e)
         return {"message": f"An error occurred: {str(e)}"}, 500
 
 @app.route('/bookServiceCustomer', methods=['POST'])
 def bookService():
     try:
-        # Parse the JSON request body
-        print("Reached Here into Booking !!")
         data = request.get_json()
         service_id = data.get('serviceId')
         professional_id = data.get('professionalId')
-        
-        # Get the user ID from the session
+
         user_id = session.get('id')
-        print("This is USER ID: ")
-        print(user_id)
         if not user_id:
             return {"message": "Unauthorized. Please log in as a customer."}, 401
 
-        # Fetch customer_id from the database using user_id
         with sqlite3.connect(db_path) as con:
             cur = con.cursor()
             cur.execute("""
@@ -731,9 +643,8 @@ def bookService():
             if not customer:
                 return {"message": "Customer not found for the given user."}, 404
 
-            customer_id = customer[0]  # Extract customer_id from the result
+            customer_id = customer[0]
 
-        # Check if a service request already exists
         with sqlite3.connect(db_path) as con:
             cur = con.cursor()
             cur.execute("""
@@ -745,39 +656,30 @@ def bookService():
             if existing_request:
                 return {"message": "Service request already exists for this customer and professional."}, 400
 
-        # Set the current date for the service request
         date_of_request = datetime.now().strftime('%Y-%m-%d')
         service_status = "Requested"
 
-        # Insert a new record into ServiceRequests table
         with sqlite3.connect(db_path) as con:
             cur = con.cursor()
             cur.execute("""
                 INSERT INTO ServiceRequests (service_id, customer_id, professional_id, date_of_request, service_status)
                 VALUES (?, ?, ?, ?, ?)
             """, (service_id, customer_id, professional_id, date_of_request, service_status))
-
-            # Commit the transaction
         con.commit()
-
-        # Return a success message
         return {"message": "Service request booked successfully!"}, 200
 
     except Exception as e:
-        # Handle errors and return an appropriate message
         print(e)
         return {"message": f"An error occurred: {str(e)}"}, 500
-
     
     
 def get_service_request_details(service_request_id, user_id):
-    connection = sqlite3.connect(db_path)  # Replace with your database file
+    connection = sqlite3.connect(db_path)
     cursor = connection.cursor()
     print("UserID and Service Request ID: ")
     print(user_id, service_request_id)
     
     try:
-        # Query to fetch service request details
         cursor.execute("""
         SELECT 
             sr.id, 
@@ -807,7 +709,6 @@ def get_service_request_details(service_request_id, user_id):
         if not result:
             return None
         
-        # Return the result as a dictionary
         return {
             "request_id": result[0],
             "service_name": result[1],
@@ -823,27 +724,20 @@ def get_service_request_details(service_request_id, user_id):
         print(f"Database error: {e}")
         return None
 
-# Flask route
 @app.route('/getRemarks/<int:service_request_id>', methods=['GET'])
 def get_remarks(service_request_id):
-    # Fetch details from the database
     user_id = session.get('id') 
     service_request_details = get_service_request_details(service_request_id, user_id)
     
     if not service_request_details:
         abort(404, description="Service request not found.")
-    
-    # Render the serviceRemarks.html page with the fetched data
     return render_template("serviceRemarks.html", **service_request_details)
 
 @app.route('/searchCustomer/<serviceName>', methods=['GET'])
 def search_customer(serviceName):
     try:
-        # Connect to the database
         with sqlite3.connect(db_path) as con:
             cur = con.cursor()
-            
-            # Query to fetch service ID and related professionals
             cur.execute("""
                 SELECT 
                     s.id AS serviceID,
@@ -858,12 +752,9 @@ def search_customer(serviceName):
                     s.name = p.serviceName
                 WHERE 
                     s.name LIKE ?
-            """, (f'%{serviceName}%',))  # Allow partial matches with LIKE
+            """, (f'%{serviceName}%',))
             
-            # Fetch all results
             results = cur.fetchall()
-            
-            # Prepare the response data
             response_data = [
                 {
                     "serviceID": row[0],
@@ -873,8 +764,6 @@ def search_customer(serviceName):
                 }
                 for row in results
             ]
-
-        # Return the results as JSON
         return jsonify(response_data), 200
 
     except Exception as e:
@@ -884,11 +773,8 @@ def search_customer(serviceName):
 @app.route('/professionalDashboard', methods=['GET'])
 def professionalDashboard():
     try:
-        # Connect to the database
-        connection = sqlite3.connect(db_path)  # Adjust to your actual database file
+        connection = sqlite3.connect(db_path)
         cursor = connection.cursor()
-
-        # SQL query to fetch all necessary data from ServiceRequests, Customers, and Users tables
         query = '''
             SELECT 
                 sr.id AS service_request_id,
@@ -910,11 +796,8 @@ def professionalDashboard():
                 Reviews r ON sr.id = r.service_request_id
         '''
 
-        # Execute the query and fetch all results
         cursor.execute(query)
         service_requests = cursor.fetchall()
-
-        # Convert the results into a list of dictionaries for easy rendering
         services = []
         for row in service_requests:
             services.append({
@@ -929,11 +812,8 @@ def professionalDashboard():
                 "rating": row[8] if row[8] else 'N/A'
             })
 
-        # Close the database connection
         cursor.close()
         connection.close()
-
-        # Render the HTML template with the fetched services data
         return render_template('professionalDashboard.html', services=services)
 
     except Exception as e:
@@ -943,23 +823,18 @@ def professionalDashboard():
 @app.route('/acceptServiceRequest/<int:serviceRequestID>', methods=['GET'])
 def accept_service_request(serviceRequestID):
     try:
-        # Connect to the database
-        connection = sqlite3.connect(db_path)  # Replace with your DB connection
+        connection = sqlite3.connect(db_path)
         cursor = connection.cursor()
-        
-        # Update the status to 'Accepted' for the given serviceRequestID
         cursor.execute('''
             UPDATE ServiceRequests
             SET service_status = 'Accepted'
             WHERE id = ?
         ''', (serviceRequestID,))
-        
-        # Commit the changes and close the connection
+
         connection.commit()
         cursor.close()
         connection.close()
         
-        # Redirect to the professional dashboard to refresh the page
         return redirect('/professionalDashboard')
     
     except Exception as e:
@@ -969,23 +844,18 @@ def accept_service_request(serviceRequestID):
 @app.route('/rejectServiceRequest/<int:serviceRequestID>', methods=['GET'])
 def reject_service_request(serviceRequestID):
     try:
-        # Connect to the database
-        connection = sqlite3.connect(db_path)  # Replace with your DB connection
+        connection = sqlite3.connect(db_path)
         cursor = connection.cursor()
-        
-        # Update the status to 'Accepted' for the given serviceRequestID
+
         cursor.execute('''
             UPDATE ServiceRequests
             SET service_status = 'Requested'
             WHERE id = ?
         ''', (serviceRequestID,))
-        
-        # Commit the changes and close the connection
+
         connection.commit()
         cursor.close()
         connection.close()
-        
-        # Redirect to the professional dashboard to refresh the page
         return redirect('/professionalDashboard')
     
     except Exception as e:
@@ -1106,6 +976,60 @@ def professional_signup():
         connection.close()
     return render_template('registerProfessional.html', services=available_services)
 
+@app.route('/customerSummary', methods = ['GET'])
+def getcustomerSummary():
+    return render_template('customerSummary.html')
+
+@app.route('/api/customerSummary', methods=['GET'])
+def get_service_status_counts():
+    try:
+        user_id = session.get('id')
+
+        if not user_id:
+            return jsonify({"message": "User is not logged in."}), 401
+
+        with sqlite3.connect(db_path) as con:
+            cur = con.cursor()
+
+            cur.execute("SELECT id FROM Customers WHERE userID = ?", (user_id,))
+            customer_id = cur.fetchone()
+
+            if customer_id is None:
+                return jsonify({"message": "Customer not found for this user."}), 404
+            
+            customer_id = customer_id[0]
+            cur.execute("""
+                SELECT COUNT(*) 
+                FROM ServiceRequests 
+                WHERE customer_id = ? AND service_status = 'Accepted'
+            """, (customer_id,))
+            accepted_count = cur.fetchone()[0]
+
+            cur.execute("""
+                SELECT COUNT(*) 
+                FROM ServiceRequests 
+                WHERE customer_id = ? AND service_status = 'Requested'
+            """, (customer_id,))
+            requested_count = cur.fetchone()[0]
+
+            cur.execute("""
+                SELECT COUNT(*) 
+                FROM ServiceRequests 
+                WHERE customer_id = ? AND service_status = 'Closed'
+            """, (customer_id,))
+            closed_count = cur.fetchone()[0]
+
+        response_data = {
+            "requested": requested_count,
+            "closed": closed_count, 
+            "assigned": accepted_count
+        }
+        return jsonify(response_data), 200
+
+    except Exception as e:
+        print(f"Error: {e}")
+        return jsonify({"message": "An error occurred while fetching service status counts."}), 500
+
 
 def initialize_database():
     try:
@@ -1214,12 +1138,20 @@ def initialize_database():
                 VALUES (2, "ABC", "M1/63 RM Colony", 624001, 5, 9080800380, "Not Approved")
             """)
             cur.execute("""
+                INSERT INTO Users (name, email, password, role)
+                VALUES ("worker-2", "naganathan15@gmail.com", "Naganathan@15", "Professional")
+            """)
+            cur.execute("""
+                INSERT OR IGNORE INTO Professionals (userID, serviceName, address, PinCode, experience, phoneNumber, status)
+                VALUES (3, "ABC", "M1/63 RM Colony", 624001, 5, 9080800380, "Not Approved")
+            """)
+            cur.execute("""
                 INSERT OR IGNORE INTO Users (name, email, password, role)
                 VALUES ("dummy", "naganathan55@gmail.com", "Naganathan@15", "Customer")
             """)
             cur.execute("""
                 INSERT OR IGNORE INTO Customers (userID, phoneNumber, address, PinCode)
-                VALUES (3, 9080800380, "YMR Patti", "624001")
+                VALUES (4, 9080800380, "YMR Patti", "624001")
             """)
             cur.execute("""
                 INSERT OR IGNORE INTO ServiceRequests (service_id, customer_id, professional_id, date_of_request, service_status)
