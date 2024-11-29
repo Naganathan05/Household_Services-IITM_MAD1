@@ -370,6 +370,10 @@ def getServiceRemarks():
 def getSearchService():
     return render_template("searchService.html")
 
+@app.route('/professionalSummary', methods = ['GET'])
+def getProfessionalSummary():
+    return render_template("professionalSummary.html")
+
 @app.route('/searchProfessional', methods = ['GET'])
 def getSearchProfessional():
     return render_template("searchProfessional.html")
@@ -448,6 +452,73 @@ def search_service_requests():
     except Exception as e:
         print("Error fetching service requests:", e)
         return {"message": "An error occurred while fetching service requests"}, 500
+    
+@app.route('/api/professionalSummary', methods=['GET'])
+def professional_summary():
+    try:
+        # Get user ID from session
+        user_id = session.get('id')
+        if not user_id:
+            return jsonify({"error": "User not logged in"}), 401
+
+        with sqlite3.connect(db_path) as con:
+            cur = con.cursor()
+
+            # Fetch professional ID from the Professionals table
+            cur.execute("SELECT id FROM Professionals WHERE userID = ?", (user_id,))
+            professional_row = cur.fetchone()
+            if not professional_row:
+                return jsonify({"error": "Professional not found"}), 404
+            professional_id = professional_row[0]
+
+            # Fetch service requests for this professional
+            cur.execute("""
+                SELECT 
+                    COUNT(*) AS total_requests,
+                    SUM(CASE WHEN service_status = 'Requested' THEN 1 ELSE 0 END) AS requested_requests,
+                    SUM(CASE WHEN service_status = 'Accepted' THEN 1 ELSE 0 END) AS accepted_requests,
+                    SUM(CASE WHEN service_status = 'Closed' THEN 1 ELSE 0 END) AS closed_requests
+                FROM ServiceRequests
+                WHERE professional_id = ?
+            """, (professional_id,))
+            service_requests_row = cur.fetchone()
+            received_count = service_requests_row[0] or 0
+            requested_count = service_requests_row[1] or 0
+            accepted_count = service_requests_row[2] or 0
+            closed_count = service_requests_row[3] or 0
+
+            # Fetch reviews for this professional by joining Reviews with ServiceRequests
+            cur.execute("""
+                SELECT 
+                    SUM(CASE WHEN r.rating >= 4 THEN 1 ELSE 0 END) AS positive_reviews,
+                    SUM(CASE WHEN r.rating < 4 THEN 1 ELSE 0 END) AS negative_reviews
+                FROM Reviews r
+                JOIN ServiceRequests sr ON r.service_request_id = sr.id
+                WHERE sr.professional_id = ?
+            """, (professional_id,))
+            reviews_row = cur.fetchone()
+            positive_reviews = reviews_row[0] or 0
+            negative_reviews = reviews_row[1] or 0
+
+        # Prepare and return the summary data
+        summary = {
+            "reviews": {
+                "positive": positive_reviews,
+                "negative": negative_reviews
+            },
+            "service_requests": {
+                "received": received_count,
+                "requested": requested_count,
+                "accepted": accepted_count,
+                "closed": closed_count
+            }
+        }
+        return jsonify(summary), 200
+
+    except Exception as e:
+        print("Error fetching professional summary:", e)
+        return {"message": "An error occurred while fetching the summary"}, 500
+
 
 @app.route('/searchProfessionals', methods=['GET'])
 def search_professionals():
@@ -1156,6 +1227,10 @@ def initialize_database():
             cur.execute("""
                 INSERT OR IGNORE INTO ServiceRequests (service_id, customer_id, professional_id, date_of_request, service_status)
                 VALUES (1, 1, 1, CURRENT_DATE, "Requested")
+            """)
+            cur.execute("""
+                INSERT OR IGNORE INTO Reviews (service_request_id, reviewer_id, rating)
+                VALUES (1, 1, 5)
             """)
 
             print("Tables created and seeded successfully!")

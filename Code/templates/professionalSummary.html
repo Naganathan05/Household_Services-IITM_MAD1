@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}Professional Summary{% endblock %}
+
+{% block cssfile %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/css/bootstrap.min.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block body %}
+<div class="container my-4">
+    <!-- Navigation bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary mt-3">
+        <div class="container-fluid">
+            <div class="navbar-brand">Dashboard</div>
+            <div class="collapse navbar-collapse">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link text-white" href="/professionalDashboard">Home</a></li>
+                    <li class="nav-item"><a class="nav-link text-white" href="/searchProfessional">Search</a></li>
+                    <li class="nav-item"><a class="nav-link text-white" href="/professionalSummary">Summary</a></li>
+                    <li class="nav-item"><a class="nav-link text-white" href="/logout">Logout</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Summary Content -->
+    <div class="row mt-4">
+        <!-- Reviews/Ratings Chart -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow">
+                <div class="card-body">
+                    <h5 class="card-title text-center text-primary">Reviews/Ratings</h5>
+                    <canvas id="ratingsChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <!-- Service Requests Chart -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow">
+                <div class="card-body">
+                    <h5 class="card-title text-center text-primary">Service Requests</h5>
+                    <canvas id="serviceRequestsChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Fetch data from the server
+    fetch('/api/professionalSummary')
+        .then(response => response.json())
+        .then(data => {
+            // Data for Ratings/Reviews chart
+            const ratingsCtx = document.getElementById('ratingsChart').getContext('2d');
+            new Chart(ratingsCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Positive', 'Negative'],
+                    datasets: [{
+                        data: [data.reviews.positive, data.reviews.negative],
+                        backgroundColor: ['#4caf50', '#f44336']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+
+            // Data for Service Requests chart
+            const serviceRequestsCtx = document.getElementById('serviceRequestsChart').getContext('2d');
+            new Chart(serviceRequestsCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Received', 'Closed', 'Rejected'],
+                    datasets: [{
+                        label: 'Service Requests',
+                        data: [
+                            data.service_requests.received,
+                            data.service_requests.closed,
+                            data.service_requests.rejected
+                        ],
+                        backgroundColor: ['#2196f3', '#4caf50', '#f44336']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        })
+        .catch(error => {
+            console.error('Error fetching summary data:', error);
+        });
+</script>
+{% endblock %}
