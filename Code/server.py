@@ -895,8 +895,26 @@ def search_customer(serviceName):
 @app.route('/professionalDashboard', methods=['GET'])
 def professionalDashboard():
     try:
+        user_id = session.get('id')
+        if not user_id:
+            print("User ID not found in session.")
+            abort(403, description="Unauthorized access.")
+
         connection = sqlite3.connect(db_path)
         cursor = connection.cursor()
+        cursor.execute("""
+            SELECT id 
+            FROM Professionals 
+            WHERE userID = ?;
+        """, (user_id,))
+        professional_result = cursor.fetchone()
+        
+        if not professional_result:
+            print(f"No professional found for userID: {user_id}")
+            abort(404, description="Professional not found.")
+        
+        professional_id = professional_result[0]
+
         query = '''
             SELECT 
                 sr.id AS service_request_id,
@@ -916,11 +934,14 @@ def professionalDashboard():
                 Users u ON c.userID = u.id
             LEFT JOIN 
                 Reviews r ON sr.id = r.service_request_id
+            WHERE 
+                sr.professional_id = ?;
         '''
-
-        cursor.execute(query)
+        
+        cursor.execute(query, (professional_id,))
         service_requests = cursor.fetchall()
         services = []
+        
         for row in service_requests:
             services.append({
                 "id": row[0],
@@ -936,11 +957,13 @@ def professionalDashboard():
 
         cursor.close()
         connection.close()
+        
         return render_template('professionalDashboard.html', services=services)
 
     except Exception as e:
         print(f"Error fetching service requests: {e}")
         return "Error loading dashboard", 500
+
 
 @app.route('/acceptServiceRequest/<int:serviceRequestID>', methods=['GET'])
 def accept_service_request(serviceRequestID):
@@ -986,10 +1009,29 @@ def reject_service_request(serviceRequestID):
     
 @app.route('/searchSRLocation/<locationName>', methods=['GET'])
 def search_by_location(locationName):
-    connection = sqlite3.connect(db_path)
-    cursor = connection.cursor()
+    try:
+        user_id = session.get('id')
+        if not user_id:
+            print("User ID not found in session.")
+            abort(403, description="Unauthorized access.")
 
-    query = '''
+        connection = sqlite3.connect(db_path)
+        cursor = connection.cursor()
+
+        cursor.execute("""
+            SELECT id 
+            FROM Professionals 
+            WHERE userID = ?;
+        """, (user_id,))
+        professional_result = cursor.fetchone()
+        
+        if not professional_result:
+            print(f"No professional found for userID: {user_id}")
+            abort(404, description="Professional not found.")
+        
+        professional_id = professional_result[0]
+
+        query = '''
             SELECT 
                 sr.id AS service_request_id,
                 u.name AS customer_name,
@@ -1009,36 +1051,59 @@ def search_by_location(locationName):
                 Users u ON c.userID = u.id
             LEFT JOIN 
                 Reviews r ON sr.id = r.service_request_id
-            WHERE c.address LIKE ?
+            WHERE 
+                c.address LIKE ? AND sr.professional_id = ?
         '''
-    cursor.execute(query, ('%' + locationName + '%',))
-    results = cursor.fetchall()
-    print(results)
+        cursor.execute(query, ('%' + locationName + '%', professional_id))
+        results = cursor.fetchall()
+        
+        services = []
+        for row in results:
+            services.append({
+                "id": row[0],
+                "customerName": row[1],
+                "phone": row[9],
+                "address": row[3],
+                "pincode": row[4],
+                "date": row[7],
+                "status": row[6],
+                "rating": row[8] if row[8] else 'N/A'
+            })
 
-    services = []
-    for row in results:
-        services.append({
-            "id": row[0],
-            "customerName": row[1],
-            "phone": row[9],
-            "address": row[3],
-            "pincode": row[4],
-            "date": row[7],
-            "status": row[6],
-            "rating": row[8] if row[8] else 'N/A'
-        })
+        cursor.close()
+        connection.close()
+        return jsonify(services)
 
-    cursor.close()
-    connection.close()
-    return jsonify(services)
+    except Exception as e:
+        print(f"Error searching by location: {e}")
+        return "Error processing request", 500
 
 
 @app.route('/searchSRPincode/<pincode>', methods=['GET'])
 def search_by_pincode(pincode):
-    connection = sqlite3.connect(db_path)
-    cursor = connection.cursor()
+    try:
+        user_id = session.get('id')
+        if not user_id:
+            print("User ID not found in session.")
+            abort(403, description="Unauthorized access.")
 
-    query = '''
+        connection = sqlite3.connect(db_path)
+        cursor = connection.cursor()
+
+        cursor.execute("""
+            SELECT id 
+            FROM Professionals 
+            WHERE userID = ?;
+        """, (user_id,))
+        professional_result = cursor.fetchone()
+
+        if not professional_result:
+            print(f"No professional found for userID: {user_id}")
+            abort(404, description="Professional not found.")
+
+        professional_id = professional_result[0]
+
+        query = '''
             SELECT 
                 sr.id AS service_request_id,
                 u.name AS customer_name,
@@ -1058,27 +1123,33 @@ def search_by_pincode(pincode):
                 Users u ON c.userID = u.id
             LEFT JOIN 
                 Reviews r ON sr.id = r.service_request_id
-            WHERE c.PinCode LIKE ?
-    '''
-    cursor.execute(query, ('%' + pincode + '%',))
-    results = cursor.fetchall()
+            WHERE 
+                c.PinCode LIKE ? AND sr.professional_id = ?
+        '''
+        cursor.execute(query, ('%' + pincode + '%', professional_id))
+        results = cursor.fetchall()
 
-    services = []
-    for row in results:
-        services.append({
-            "id": row[0],
-            "customerName": row[1],
-            "phone": row[9],
-            "address": row[3],
-            "pincode": row[4],
-            "date": row[7],
-            "status": row[6],
-            "rating": row[8] if row[8] else 'N/A'
-        })
+        services = []
+        for row in results:
+            services.append({
+                "id": row[0],
+                "customerName": row[1],
+                "phone": row[9],
+                "address": row[3],
+                "pincode": row[4],
+                "date": row[7],
+                "status": row[6],
+                "rating": row[8] if row[8] else 'N/A'
+            })
 
-    cursor.close()
-    connection.close()
-    return jsonify(services)
+        cursor.close()
+        connection.close()
+        return jsonify(services)
+
+    except Exception as e:
+        print(f"Error searching by pincode: {e}")
+        return "Error processing request", 500
+
 
 @app.route('/registerProfessional', methods=['GET'])
 def professional_signup():
