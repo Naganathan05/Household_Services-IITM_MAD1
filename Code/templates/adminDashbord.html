@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Admin Login{% endblock %}
+{% block title %}Admin Dashboard{% endblock %}
 {% block cssfile %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/css/bootstrap.min.css" integrity="sha384-F3w7mX95PdgyTmZZMECAngseQB83DfGTowi0iMjiWaeVhAn4FJkqJByhZMI3AhiU" crossorigin="anonymous">
 <link rel="stylesheet" href="{{ url_for('static', filename='adminDashboard.css') }}">
@@ -54,11 +54,9 @@
                     <td>{{ service.base_price }}</td>
                     <td>
                         <form method="GET" action="/editService/{{ service.id }}" class="d-inline-block me-2">
-                            <input type="hidden" name="id" value="{{ service.id }}">
                             <button type="submit" class="btn btn-warning btn-sm">Edit</button>
                         </form>
-                        <form method="POST" action="/deleteService/{{ service.id }}" class="d-inline-block">
-                            <input type="hidden" name="id" value="{{ service.id }}">
+                        <form method="GET" action="/deleteService/{{ service.id }}" class="d-inline-block">
                             <button type="submit" class="btn btn-danger btn-sm">Delete</button>
                         </form>
                     </td>
@@ -92,16 +90,16 @@
                     <td>{{ professional.service_name }}</td>
                     <td>{{ professional.status }}</td>
                     <td>
-                        <form method="POST" action="/approve" class="d-inline-block me-2">
-                            <input type="hidden" name="id" value="{{ professional.id }}">
+                        <form method="GET" action="/fetchDoc/{{ professional.id }}" class="d-inline-block me-2">
+                            <button type="submit" class="btn btn-info btn-sm">Download</button>
+                        </form>
+                        <form method="GET" action="/approveProfessional/{{ professional.id }}" class="d-inline-block me-2">
                             <button type="submit" class="btn btn-success btn-sm">Approve</button>
                         </form>
-                        <form method="POST" action="/reject" class="d-inline-block me-2">
-                            <input type="hidden" name="id" value="{{ professional.id }}">
+                        <form method="GET" action="/rejectProfessional/{{ professional.id }}" class="d-inline-block me-2">
                             <button type="submit" class="btn btn-warning btn-sm">Reject</button>
                         </form>
-                        <form method="POST" action="/delete" class="d-inline-block">
-                            <input type="hidden" name="id" value="{{ professional.id }}">
+                        <form method="GET" action="/deleteProfessional/{{ professional.id }}" class="d-inline-block">
                             <button type="submit" class="btn btn-danger btn-sm">Delete</button>
                         </form>
                     </td>

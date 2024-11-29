@@ -1,6 +1,6 @@
 import sqlite3
 import os
-from flask import Flask, request, jsonify, redirect, session, render_template, abort
+from flask import Flask, request, jsonify, redirect, session, render_template, abort, send_from_directory
 from datetime import datetime
 from werkzeug.utils import secure_filename
 
@@ -161,12 +161,11 @@ def register_professional():
         user_id = cursor.lastrowid
 
         cursor.execute("""
-            INSERT INTO Professionals (userID, serviceName, experience, address, PinCode, phoneNumber)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (user_id, service_name, experience, address, pincode, phoneNumber))
-        professional_id = cursor.lastrowid
+            INSERT INTO Professionals (userID, serviceName, experience, address, PinCode, phoneNumber, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (user_id, service_name, experience, address, pincode, phoneNumber, "Not Approved"))
 
-        filename = f"{professional_id}_{secure_filename(document.filename)}"
+        filename = f"{user_id}_{secure_filename(document.filename)}"
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         document.save(filepath)
 
@@ -535,7 +534,7 @@ def search_professionals():
                 SELECT u.id AS userID, u.name AS name, p.serviceName AS service_name, p.status
                 FROM Professionals p
                 INNER JOIN Users u ON p.userID = u.id
-                WHERE u.name LIKE ?
+                WHERE u.name LIKE ? AND p.status = "Approved"
             """, (f"%{search_word}%",))
 
             professionals = [
@@ -607,7 +606,7 @@ def get_professionals(serviceName):
                 SELECT p.userID, u.name, p.phoneNumber 
                 FROM Professionals p
                 JOIN Users u ON p.userID = u.id
-                WHERE p.serviceName = ?
+                WHERE p.serviceName = ? AND p.status = "Approved"
             """, (serviceName,))
             
             professionals = cur.fetchall()
@@ -744,64 +743,116 @@ def bookService():
         return {"message": f"An error occurred: {str(e)}"}, 500
     
     
-def get_service_request_details(service_request_id, user_id):
+def get_service_request_details(service_request_id, user_id, professional_name):
     connection = sqlite3.connect(db_path)
     cursor = connection.cursor()
-    print("UserID and Service Request ID: ")
-    print(user_id, service_request_id)
     
     try:
+        # Step 1: Get userID based on professionalName
         cursor.execute("""
-        SELECT 
-            sr.id, 
-            s.name AS serviceName, 
-            s.description, 
-            sr.date_of_request, 
-            p.id AS professional_id, 
-            u.name AS professional_name, 
-            p.phoneNumber AS contact_no, 
-            sr.remarks
-        FROM 
-            ServiceRequests sr
-        LEFT JOIN 
-            Services s ON sr.service_id = s.id
-        LEFT JOIN 
-            Professionals p ON sr.professional_id = p.id
-        LEFT JOIN 
-            Users u ON p.userID = u.id
-        WHERE 
-            sr.id = ?
-            AND u.id = ?;
-        """, (service_request_id, user_id))
+            SELECT id 
+            FROM Users 
+            WHERE name = ?;
+        """, (professional_name,))
         
-        result = cursor.fetchone()
-        connection.close()
-        
-        if not result:
+        user_result = cursor.fetchone()
+        if not user_result:
+            print(f"No user found with the professional name: {professional_name}")
             return None
         
+        professional_user_id = user_result[0]
+
+        # Step 2: Get professionalID and phoneNumber based on userID
+        cursor.execute("""
+            SELECT id, phoneNumber 
+            FROM Professionals 
+            WHERE userID = ?;
+        """, (professional_user_id,))
+        
+        professional_result = cursor.fetchone()
+        if not professional_result:
+            print(f"No professional found for userID: {professional_user_id}")
+            return None
+        
+        professional_id, contact_no = professional_result
+
+        # Step 3: Fetch customer_id from Customers table using user_id
+        cursor.execute("""
+            SELECT id 
+            FROM Customers 
+            WHERE userID = ?;
+        """, (user_id,))
+        
+        customer_result = cursor.fetchone()
+        if not customer_result:
+            print(f"No customer found for userID: {user_id}")
+            return None
+        
+        customer_id = customer_result[0]
+
+        # Step 4: Get service request details using service_request_id and customer_id
+        cursor.execute("""
+            SELECT 
+                sr.id AS request_id,            -- Request ID
+                s.name AS service_name,         -- Service Name
+                s.description,                  -- Description
+                sr.date_of_request,             -- Date of Request
+                sr.remarks                      -- Remarks
+            FROM 
+                ServiceRequests sr
+            LEFT JOIN 
+                Services s ON sr.service_id = s.id  -- Join with Services table
+            WHERE 
+                sr.id = ? AND sr.customer_id = ?;   -- Filter by service_request_id and customer_id
+        """, (service_request_id, customer_id))
+        
+        service_request_result = cursor.fetchone()
+        if not service_request_result:
+            print("No matching service request found.")
+            return None
+
         return {
-            "request_id": result[0],
-            "service_name": result[1],
-            "description": result[2],
-            "date": result[3],
-            "professional_id": result[4],
-            "professional_name": result[5],
-            "contact_no": result[6],
-            "remarks": result[7],
+            "request_id": service_request_result[0],
+            "service_name": service_request_result[1],
+            "description": service_request_result[2],
+            "date": service_request_result[3],
+            "professional_id": professional_id,
+            "professional_name": professional_name,
+            "contact_no": contact_no,
+            "remarks": service_request_result[4],
         }
+
     except sqlite3.Error as e:
-        connection.close()
         print(f"Database error: {e}")
         return None
 
-@app.route('/getRemarks/<int:service_request_id>', methods=['GET'])
-def get_remarks(service_request_id):
-    user_id = session.get('id') 
-    service_request_details = get_service_request_details(service_request_id, user_id)
+    finally:
+        connection.close()
+
+@app.route('/getRemarks', methods=['POST'])
+def get_remarks():
+    # Extract data from form submission
+    service_request_id = request.form.get('serviceRequestID')
+    professional_name = request.form.get('professionalName')
+    print(service_request_id, professional_name)
+
+    if not service_request_id or not professional_name:
+        print("Missing parameters in the request.")
+        abort(400, description="Missing service_request_id or professional_name.")
+
+    user_id = session.get('id')
+
+    if not user_id:
+        print("User ID not found in session.")
+        abort(403, description="Unauthorized access.")
     
+    # Call the updated get_service_request_details with professional_name
+    service_request_details = get_service_request_details(service_request_id, user_id, professional_name)
+
     if not service_request_details:
+        print("Service request not found for the given ID, user, or professional name.")
         abort(404, description="Service request not found.")
+    
     return render_template("serviceRemarks.html", **service_request_details)
 
 @app.route('/searchCustomer/<serviceName>', methods=['GET'])
@@ -1100,6 +1151,79 @@ def get_service_status_counts():
     except Exception as e:
         print(f"Error: {e}")
         return jsonify({"message": "An error occurred while fetching service status counts."}), 500
+    
+@app.route('/fetchDoc/<int:professional_id>', methods=['GET'])
+def fetch_doc(professional_id):
+    try:
+
+            # Search for the file in the UPLOAD_PATH
+            files = [f for f in os.listdir(UPLOAD_FOLDER) if f.startswith(str(professional_id))]
+
+            if not files:
+                return jsonify({"message": "Document not found"}), 404
+
+            # Assuming the first matching file is the correct one
+            file_to_send = files[0]
+
+            # Send the file using send_from_directory
+            return send_from_directory(UPLOAD_FOLDER, file_to_send, as_attachment=True)
+
+    except Exception as e:
+        print("Error fetching document:", e)
+        return jsonify({"message": "An error occurred while fetching the document"}), 500
+
+@app.route('/approveProfessional/<int:professional_id>', methods=['GET'])
+def approve_professional(professional_id):
+    try:
+        with sqlite3.connect(db_path) as con:
+            cur = con.cursor()
+            cur.execute("""
+                UPDATE Professionals
+                SET status = ?
+                WHERE userID = ?
+            """, ('Approved', professional_id))
+
+            con.commit()
+        return redirect('/admin')
+
+    except Exception as e:
+        print("Error approving professional:", e)
+        return jsonify({"message": "An error occurred while approving the professional"}), 500
+    
+@app.route('/rejectProfessional/<int:professional_id>', methods=['GET'])
+def reject_professional(professional_id):
+    try:
+        with sqlite3.connect(db_path) as con:
+            cur = con.cursor()
+            cur.execute("""
+                UPDATE Professionals
+                SET status = ?
+                WHERE userID = ?
+            """, ('Not Approved', professional_id))
+
+            con.commit()
+        return redirect('/admin')
+
+    except Exception as e:
+        print("Error rejecting professional:", e)
+        return jsonify({"message": "An error occurred while rejecting the professional"}), 500
+
+@app.route('/deleteProfessional/<int:professional_id>', methods=['GET'])
+def delete_professional(professional_id):
+    try:
+        with sqlite3.connect(db_path) as con:
+            cur = con.cursor()
+            cur.execute("""
+                DELETE FROM Professionals
+                WHERE userID = ?
+            """, (professional_id,))
+
+            con.commit()
+        return redirect('/admin')
+
+    except Exception as e:
+        print("Error deleting professional:", e)
+        return jsonify({"message": "An error occurred while deleting the professional"}), 500
 
 
 def initialize_database():
@@ -1201,12 +1325,16 @@ def initialize_database():
                 VALUES ("ABC", 5000, 2, "This is a New Service")
             """)
             cur.execute("""
+                INSERT OR IGNORE INTO Services (name, price, time_required, description)
+                VALUES ("CDE", 5000, 2, "This is a New Service")
+            """)
+            cur.execute("""
                 INSERT INTO Users (name, email, password, role)
                 VALUES ("worker", "naganathan155@gmail.com", "Naganathan@15", "Professional")
             """)
             cur.execute("""
                 INSERT OR IGNORE INTO Professionals (userID, serviceName, address, PinCode, experience, phoneNumber, status)
-                VALUES (2, "ABC", "M1/63 RM Colony", 624001, 5, 9080800380, "Not Approved")
+                VALUES (2, "ABC", "M1/63 RM Colony", 624001, 5, 9080800380, "Approved")
             """)
             cur.execute("""
                 INSERT INTO Users (name, email, password, role)
@@ -1214,7 +1342,7 @@ def initialize_database():
             """)
             cur.execute("""
                 INSERT OR IGNORE INTO Professionals (userID, serviceName, address, PinCode, experience, phoneNumber, status)
-                VALUES (3, "ABC", "M1/63 RM Colony", 624001, 5, 9080800380, "Not Approved")
+                VALUES (3, "ABC", "M1/63 RM Colony", 624001, 5, 9080800380, "Approved")
             """)
             cur.execute("""
                 INSERT OR IGNORE INTO Users (name, email, password, role)

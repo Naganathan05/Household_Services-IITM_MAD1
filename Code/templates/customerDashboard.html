@@ -102,7 +102,8 @@
                     {% if request[4] == "Requested" %}
                     <button 
                         class="btn btn-success btn-sm close-request" 
-                        data-service-request-id="{{ request[0] }}">
+                        data-service-request-id="{{ request[0] }}" 
+                        data-professional-name="{{ request[2] }}">
                         Close?
                     </button>
                     {% else %}
@@ -182,13 +183,34 @@
             });
         });
 
-        // Handle Close? button click
         $(document).on("click", ".close-request", function () {
             const serviceRequestID = $(this).data("service-request-id");
+            const professionalName = $(this).data("professional-name");
 
-            // Redirect to /getRemarks/:serviceRequestID
-            window.location.href = `/getRemarks/${serviceRequestID}`;
+            // Redirect to the backend with POST request using a form
+            const form = $('<form>', {
+                method: 'POST',
+                action: '/getRemarks'
+            });
+
+            // Add hidden input fields for serviceRequestID and professionalName
+            form.append($('<input>', {
+                type: 'hidden',
+                name: 'serviceRequestID',
+                value: serviceRequestID
+            }));
+
+            form.append($('<input>', {
+                type: 'hidden',
+                name: 'professionalName',
+                value: professionalName
+            }));
+
+            // Append the form to the body and submit it
+            $('body').append(form);
+            form.submit();
         });
+
     });
 </script>
 {% endblock %}
