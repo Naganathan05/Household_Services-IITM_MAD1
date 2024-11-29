@@ -1225,6 +1225,62 @@ def delete_professional(professional_id):
         print("Error deleting professional:", e)
         return jsonify({"message": "An error occurred while deleting the professional"}), 500
 
+@app.route('/submitRemark', methods=['POST'])
+def submit_remark():
+    # Ensure user is authenticated
+    user_id = session.get('id')
+    if not user_id:
+        abort(403, description="Unauthorized access.")
+
+    try:
+        # Parse request data
+        data = request.get_json()
+        service_request_id = data.get('service_request_id')
+        rating = data.get('rating')
+        remarks = data.get('remarks', "")
+
+        if not service_request_id or not rating:
+            abort(400, description="Missing required fields: service_request_id or rating.")
+
+        # Connect to the database
+        connection = sqlite3.connect(db_path)
+        cursor = connection.cursor()
+
+        # Fetch the customer ID based on the user ID
+        cursor.execute("""
+            SELECT id 
+            FROM Customers 
+            WHERE userID = ?;
+        """, (user_id,))
+        customer_result = cursor.fetchone()
+
+        if not customer_result:
+            abort(404, description="Customer not found for the given user ID.")
+        
+        customer_id = customer_result[0]
+
+        # Insert the review into the Reviews table
+        created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cursor.execute("""
+            INSERT INTO Reviews (service_request_id, reviewer_id, rating, comment, created_at)
+            VALUES (?, ?, ?, ?, ?);
+        """, (service_request_id, customer_id, rating, remarks, created_at))
+
+        # Commit the changes
+        connection.commit()
+
+        # Return success response
+        return jsonify({"message": "Review submitted successfully!"}), 201
+
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+        abort(500, description="An error occurred while processing your request.")
+    
+    finally:
+        # Close the database connection
+        if connection:
+            connection.close()
+
 
 def initialize_database():
     try:

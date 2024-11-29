@@ -4,6 +4,7 @@
 
 {% block cssfile %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/css/bootstrap.min.css">
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 {% endblock %}
 
 {% block body %}
@@ -11,7 +12,7 @@
     <h3 class="text-center">Service Remarks</h3>
     <div class="card mx-auto" style="max-width: 600px; border: 2px solid #f3c6c6;">
         <div class="card-body" style="background-color: #ffe6e6;">
-            <form action="/submit_remarks" method="POST">
+            <form id="remarks-form">
                 <!-- Request ID -->
                 <div class="mb-3 text-center">
                     <strong>Request ID:</strong> <span>{{ request_id }}</span>
@@ -88,11 +89,43 @@
 
                 <!-- Submit and Close Buttons -->
                 <div class="d-flex justify-content-between">
-                    <button type="submit" class="btn btn-primary">Submit</button>
+                    <button type="button" id="submit-remarks" class="btn btn-primary">Submit</button>
                     <a href="/customer" class="btn btn-secondary">Close</a>
                 </div>
             </form>
         </div>
     </div>
 </div>
+
+<script>
+    $(document).ready(function () {
+        $("#submit-remarks").on("click", function (e) {
+            e.preventDefault(); // Prevent default form submission
+
+            // Get rating and remarks
+            const rating = $("input[name='rating']:checked").val();
+            const remarks = $("#remarks").val();
+
+            if (!rating) {
+                alert("Please select a rating.");
+                return;
+            }
+
+            // Perform AJAX POST request
+            $.ajax({
+                url: "/submitRemark",
+                type: "POST",
+                contentType: "application/json",
+                data: JSON.stringify({ rating, remarks, request_id }),
+                success: function () {
+                    alert("Remarks submitted successfully!");
+                    window.location.href = "/customer"; // Redirect to customer dashboard
+                },
+                error: function () {
+                    alert("Failed to submit remarks. Please try again.");
+                }
+            });
+        });
+    });
+</script>
 {% endblock %}
